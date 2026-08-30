@@ -1,0 +1,9 @@
+{
+  "mode": "capturing",
+  "state-title": "请按下组合键",
+  "state-detail": "按住修饰键，再按目标键；Esc 取消。",
+  "shortcut-text": "正在监听…",
+  "evidence-text": "临时捕获已开启",
+  "action-text": "取消",
+  "accent": "#c9342a"
+}

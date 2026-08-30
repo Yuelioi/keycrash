@@ -1,0 +1,70 @@
+{
+  "title": "选择 KeyCrash 的视觉方向",
+  "question": "核心功能只有一次点击和一次按键；选择它应该像哪一种可信的检测工具。",
+  "options": [
+    {
+      "id": "signal-trace",
+      "label": "信号轨迹",
+      "kicker": "推荐方向",
+      "lineage": "便携式逻辑分析仪与维修台测量界面",
+      "thesis": "把一次组合键输入变成一条短促、可解释的检测轨迹。",
+      "palette": ["#DDE2E5", "#11171C", "#007D82", "#E84A3C"],
+      "materials": ["冷灰仪器面板", "细密测量网格", "单条信号轨迹"],
+      "viewport": "440×300 的浅色仪器面板；中央只保留组合键轨迹与结论，底部是一枚高辨识度检测按钮。",
+      "risk": "轨迹若过度动画会显得像性能监控器，因此只在捕获与判定瞬间出现。"
+    },
+    {
+      "id": "seven-segment",
+      "label": "段码仪表",
+      "kicker": "备选",
+      "lineage": "七段显示器、床头时钟和测试仪状态面板",
+      "thesis": "所有检测状态都在固定槽位中点亮，未点亮的部分同样构成信息。",
+      "palette": ["#111212", "#F35B4C", "#3A302E", "#F0EDE5"],
+      "materials": ["哑黑面板", "幽灵段码", "瞬时点亮"],
+      "viewport": "大号组合键占据中央固定槽位，按钮循环检测、取消和再测一次。",
+      "risk": "仪表辨识度很强，但大量中文解释不适合全部段码化，只能作为局部语言。",
+      "case": "状态非常醒目，但解释能力弱于信号轨迹。",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-seven-segment-alarm-clock-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/signals-instruments-seven-segment-alarm-clock.webp"
+    },
+    {
+      "id": "hypercard",
+      "label": "黑白卡片",
+      "kicker": "备选",
+      "lineage": "HyperCard 卡片栈与一位图桌面工具",
+      "thesis": "每次检测都是一张可返回、可重测的黑白卡片。",
+      "palette": ["#FFFFFF", "#000000", "#B8B8B8", "#6B6B6B"],
+      "materials": ["一位图边框", "抖动灰", "反相按压态"],
+      "viewport": "固定比例黑白卡片，手绘边框内只有说明、按键和一个反相按钮。",
+      "risk": "极简且有性格，但复古像素感可能削弱现代 Windows 工具的可靠印象。",
+      "case": "单任务结构贴题，品牌气质却更像怀旧作品。",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-hypercard-stack-shoebox-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/medium-native-hypercard-stack-shoebox.webp"
+    },
+    {
+      "id": "miura",
+      "label": "证据展开",
+      "kicker": "备选",
+      "lineage": "可展开的 Miura 折纸结构与航天工程图",
+      "thesis": "一个紧凑按键包在检测后展开为彼此关联的证据面。",
+      "palette": ["#F8F8F5", "#15191B", "#C49A2C", "#BFD9E6"],
+      "materials": ["哑白折面", "金色封签", "冷蓝谷折线"],
+      "viewport": "中央组合键胶囊在检测后沿折线展开，露出系统规则、注册结果和下一步。",
+      "risk": "机制表达很独特，但几何展开可能让一个简单任务显得过度设计。",
+      "case": "能表现证据关系，但不如仪器隐喻直接。",
+      "hero": "https://impeccable.style/worlds/cards/paper-folds-pleats-deployable-miura-orbit-sheet-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/paper-folds-pleats-deployable-miura-orbit-sheet.webp"
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "canon": true,
+  "canonCard": {
+    "label": "标准 Windows 工具",
+    "thesis": "使用熟悉的 Fluent 卡片、系统色和标准按钮，把类别惯例做到完整。",
+    "palette": ["#F3F3F3", "#FFFFFF", "#005FB8", "#1A1A1A"],
+    "materials": ["Fluent 控件", "系统圆角", "Windows 强调色"],
+    "viewport": "标题、说明、一个蓝色主按钮和标准状态卡依次垂直排列。",
+    "risk": "最熟悉也最安全，但不容易形成 KeyCrash 自己的识别度。"
+  }
+}

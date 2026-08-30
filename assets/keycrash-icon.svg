@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="KeyCrash">
+  <rect width="256" height="256" rx="58" fill="#11171c"/>
+  <path d="M58 47h23v70l73-70h34l-82 78 87 84h-35l-77-76v76H58z" fill="#f3f6f7"/>
+  <path d="M48 218h54v-17h35v17h71" fill="none" stroke="#c9342a" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

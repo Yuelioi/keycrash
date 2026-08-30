@@ -1,0 +1,31 @@
+[package]
+name = "keycrash"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[workspace]
+resolver = "3"
+members = [".", "native/owner-hook", "native/owner-probe"]
+
+[dependencies]
+slint = { version = "=1.17.1", default-features = false, features = [
+    "std",
+    "backend-winit",
+    "renderer-femtovg",
+    "accessibility",
+    "compat-1-2",
+] }
+windows = { version = "0.62.2", features = [
+    "Win32_Foundation",
+    "Win32_UI_Input_KeyboardAndMouse",
+] }
+
+[build-dependencies]
+slint-build = "=1.17.1"
+winresource = "0.1.31"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"

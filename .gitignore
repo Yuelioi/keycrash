@@ -1,0 +1,6 @@
+/target/
+/prototypes/**/target/
+/.idea/
+/.vscode/
+*.pdb
+/.impeccable/screenshots/

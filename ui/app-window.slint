@@ -1,0 +1,470 @@
+/*
+THESIS: 虚拟修饰键与一个本地目标键汇成可解释的检测轨迹，拒绝真实触发完整快捷键。
+OWN-WORLD: 冷灰仪器面板、墨黑读数、青色确认、红橙操作，以及检测时出现的正交信号轨迹。
+STORY: 用户点选 modifier tags，点击开始，只按一个目标键，然后读取结论与证据边界。
+FIRST VIEWPORT: 460×380 单窗口，上方是品牌和状态，中部是 modifier tags、目标键读数与测量轨迹，底部只有一个主操作。
+FORM: 信号轨迹视觉世界；证据剖面式层级，种子 132c565a。
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+*/
+
+component SignalTrace inherits Rectangle {
+    in property <color> signal-color;
+    in property <bool> active;
+
+    background: transparent;
+    opacity: active ? 1 : 0;
+    animate opacity { duration: 160ms; easing: ease-out; }
+
+    Rectangle { x: 0px; y: 9px; width: 39px; height: 2px; background: root.signal-color; }
+    Rectangle { x: 38px; y: 3px; width: 2px; height: 8px; background: root.signal-color; }
+    Rectangle { x: 39px; y: 3px; width: 29px; height: 2px; background: root.signal-color; }
+    Rectangle { x: 67px; y: 3px; width: 2px; height: 8px; background: root.signal-color; }
+    Rectangle { x: 68px; y: 9px; width: 128px; height: 2px; background: root.signal-color; }
+
+    Rectangle { x: 0px; y: 23px; width: 69px; height: 2px; background: root.signal-color; }
+    Rectangle { x: 68px; y: 16px; width: 2px; height: 9px; background: root.signal-color; }
+    Rectangle { x: 69px; y: 16px; width: 31px; height: 2px; background: root.signal-color; }
+    Rectangle { x: 99px; y: 16px; width: 2px; height: 9px; background: root.signal-color; }
+    Rectangle { x: 100px; y: 23px; width: 96px; height: 2px; background: root.signal-color; }
+
+    Rectangle { x: 0px; y: 37px; width: 105px; height: 2px; background: root.signal-color; }
+    Rectangle { x: 104px; y: 30px; width: 2px; height: 9px; background: root.signal-color; }
+    Rectangle { x: 105px; y: 30px; width: 31px; height: 2px; background: root.signal-color; }
+    Rectangle { x: 135px; y: 30px; width: 2px; height: 9px; background: root.signal-color; }
+    Rectangle { x: 136px; y: 37px; width: 60px; height: 2px; background: root.signal-color; }
+
+    Rectangle { x: 195px; y: 9px; width: 2px; height: 30px; background: root.signal-color; }
+}
+
+component ActionButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    in property <color> action-color;
+    callback clicked;
+
+    height: 44px;
+    border-radius: 10px;
+    background: root.action-color;
+    opacity: !root.enabled ? 0.42 : touch.pressed ? 0.78 : touch.has-hover ? 0.9 : 1;
+    forward-focus: focus-scope;
+    accessible-role: button;
+    accessible-enabled: root.enabled;
+    accessible-label: root.text;
+    accessible-action-default => { touch.clicked(); }
+
+    animate opacity { duration: 110ms; easing: ease-out; }
+
+    Text {
+        text: root.text;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 650;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+
+    focus-scope := FocusScope {
+        x: 0px;
+        y: 0px;
+        width: parent.width;
+        height: parent.height;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if (event.text == Key.Space || event.text == Key.Return) {
+                touch.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            focus-scope.focus();
+            root.clicked();
+        }
+    }
+
+    if (focus-scope.has-focus && root.enabled) : Rectangle {
+        x: -3px;
+        y: -3px;
+        width: parent.width + 6px;
+        height: parent.height + 6px;
+        border-radius: 13px;
+        border-width: 2px;
+        border-color: #11171c;
+    }
+}
+
+component ModifierTag inherits Rectangle {
+    in property <string> text;
+    in property <bool> selected;
+    in property <bool> enabled: true;
+    callback toggled;
+
+    width: 58px;
+    height: 30px;
+    border-radius: 9px;
+    background: root.selected ? #11171c : #f8fafb;
+    border-width: 1px;
+    border-color: root.selected ? #11171c : #aab6bc;
+    opacity: root.enabled ? (touch.pressed ? 0.76 : touch.has-hover ? 0.9 : 1) : 0.58;
+    forward-focus: focus-scope;
+    accessible-role: button;
+    accessible-enabled: root.enabled;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-label: root.selected ? "移除 " + root.text : "添加 " + root.text;
+    accessible-action-default => { touch.clicked(); }
+
+    animate background, opacity { duration: 110ms; easing: ease-out; }
+
+    Text {
+        text: root.selected ? root.text + "  ×" : "+  " + root.text;
+        color: root.selected ? #ffffff : #344249;
+        font-size: 12px;
+        font-weight: 650;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+
+    focus-scope := FocusScope {
+        x: 0px;
+        y: 0px;
+        width: parent.width;
+        height: parent.height;
+        enabled: root.enabled;
+        key-pressed(event) => {
+            if (event.text == Key.Space || event.text == Key.Return) {
+                touch.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            focus-scope.focus();
+            root.toggled();
+        }
+    }
+
+    if (focus-scope.has-focus && root.enabled) : Rectangle {
+        x: -2px;
+        y: -2px;
+        width: parent.width + 4px;
+        height: parent.height + 4px;
+        border-radius: 11px;
+        border-width: 2px;
+        border-color: #c9342a;
+    }
+}
+
+export component AppWindow inherits Window {
+    width: 460px;
+    height: 380px;
+    title: "KeyCrash";
+    icon: @image-url("../assets/keycrash-icon.svg");
+    background: #dce2e5;
+
+    in-out property <string> mode: "idle";
+    in-out property <string> state-title: "选择修饰键";
+    in-out property <string> state-detail: "单击 Ctrl、Alt、Shift；开始后只按一个目标键。";
+    in-out property <string> shortcut-text: "等待目标键";
+    in-out property <string> evidence-text: "安全输入 · 不发送完整组合";
+    in-out property <string> action-text: "开始检测";
+    in-out property <color> accent: #c9342a;
+    in-out property <bool> ctrl-selected: false;
+    in-out property <bool> alt-selected: false;
+    in-out property <bool> shift-selected: false;
+    in-out property <bool> action-enabled: true;
+
+    callback begin-detection(bool, bool, bool);
+    callback action-key-entered(string, bool, bool, bool);
+    callback cancel-requested();
+    callback modifiers-changed();
+    callback locate-owner();
+
+    Rectangle {
+        x: 0px;
+        y: 0px;
+        width: root.width;
+        height: root.height;
+        background: transparent;
+
+        capture-focus := FocusScope {
+            x: -1px;
+            y: -1px;
+            width: 1px;
+            height: 1px;
+            enabled: root.mode == "waiting-key";
+            key-pressed(event) => {
+                if (event.text == Key.Escape) {
+                    root.cancel-requested();
+                    return accept;
+                }
+                if (event.modifiers.control || event.modifiers.alt || event.modifiers.shift || event.modifiers.meta) {
+                    return accept;
+                }
+                root.action-key-entered(event.text, root.ctrl-selected, root.alt-selected, root.shift-selected);
+                return accept;
+            }
+        }
+
+        Rectangle {
+            x: 28px;
+            y: 24px;
+            width: parent.width - 56px;
+            height: 99px;
+            background: transparent;
+
+            HorizontalLayout {
+                x: 0px;
+                y: 0px;
+                width: parent.width;
+                height: 34px;
+                alignment: start;
+                spacing: 10px;
+
+                Rectangle {
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: #11171c;
+
+                    Text {
+                        text: "K";
+                        color: #f3f6f7;
+                        font-size: 17px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+
+                    Rectangle {
+                        x: 6px;
+                        y: 27px;
+                        width: 22px;
+                        height: 2px;
+                        background: root.accent;
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: 1px;
+                    Text {
+                        text: "KeyCrash";
+                        color: #11171c;
+                        font-size: 16px;
+                        font-weight: 700;
+                    }
+                    Text {
+                        text: "一按，找到快捷键冲突";
+                        color: #536168;
+                        font-size: 11px;
+                    }
+                }
+            }
+
+            Text {
+                x: 0px;
+                y: 50px;
+                width: parent.width;
+                height: 30px;
+                text: root.state-title;
+                color: #11171c;
+                font-size: 25px;
+                font-weight: 700;
+                overflow: elide;
+            }
+
+            Text {
+                x: 0px;
+                y: 83px;
+                width: parent.width;
+                height: 16px;
+                text: root.state-detail;
+                color: #45545b;
+                font-size: 13px;
+                overflow: elide;
+            }
+        }
+
+        Rectangle {
+            x: 28px;
+            y: 138px;
+            width: parent.width - 56px;
+            height: 142px;
+            background: #edf1f2;
+            border-width: 1px;
+            border-color: #b8c2c7;
+            border-radius: 14px;
+            drop-shadow-color: #26343c26;
+            drop-shadow-offset-y: 7px;
+            drop-shadow-blur: 18px;
+
+            Rectangle { x: 18px; y: 29px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
+            Rectangle { x: 18px; y: 57px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
+            Rectangle { x: 18px; y: 85px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
+            Rectangle { x: 18px; y: 113px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
+            Rectangle { x: 79px; y: 16px; width: 1px; height: parent.height - 32px; background: root.mode == "waiting-key" ? #d7dddf : #e8eced; }
+            Rectangle { x: 151px; y: 16px; width: 1px; height: parent.height - 32px; background: root.mode == "waiting-key" ? #d7dddf : #e8eced; }
+            Rectangle { x: 223px; y: 16px; width: 1px; height: parent.height - 32px; background: root.mode == "waiting-key" ? #d7dddf : #e8eced; }
+            Rectangle { x: 295px; y: 16px; width: 1px; height: parent.height - 32px; background: root.mode == "waiting-key" ? #d7dddf : #e8eced; }
+            Rectangle { x: 367px; y: 16px; width: 1px; height: parent.height - 32px; background: root.mode == "waiting-key" ? #d7dddf : #e8eced; }
+
+            HorizontalLayout {
+                x: 18px;
+                y: 17px;
+                width: 190px;
+                height: 30px;
+                spacing: 7px;
+                alignment: start;
+
+                ModifierTag {
+                    text: "Ctrl";
+                    selected: root.ctrl-selected;
+                    enabled: root.mode != "waiting-key" && root.mode != "locating";
+                    toggled => {
+                        root.ctrl-selected = !root.ctrl-selected;
+                        root.modifiers-changed();
+                    }
+                }
+                ModifierTag {
+                    text: "Alt";
+                    selected: root.alt-selected;
+                    enabled: root.mode != "waiting-key" && root.mode != "locating";
+                    toggled => {
+                        root.alt-selected = !root.alt-selected;
+                        root.modifiers-changed();
+                    }
+                }
+                ModifierTag {
+                    text: "Shift";
+                    selected: root.shift-selected;
+                    enabled: root.mode != "waiting-key" && root.mode != "locating";
+                    toggled => {
+                        root.shift-selected = !root.shift-selected;
+                        root.modifiers-changed();
+                    }
+                }
+            }
+
+            Text {
+                x: 18px;
+                y: 58px;
+                width: 190px;
+                height: 38px;
+                visible: root.mode != "waiting-key" && root.mode != "locating";
+                text: root.ctrl-selected || root.alt-selected || root.shift-selected ? "已选 tag 可再次单击移除" : "单击添加需要的修饰键";
+                color: #5e6c72;
+                font-size: 11px;
+                wrap: word-wrap;
+            }
+
+            SignalTrace {
+                x: 24px;
+                y: 55px;
+                width: 196px;
+                height: 46px;
+                signal-color: root.accent;
+                active: root.mode == "waiting-key" || root.mode == "locating";
+            }
+
+            Rectangle {
+                x: 218px;
+                y: 32px;
+                width: parent.width - 242px;
+                height: 62px;
+                background: #f8fafb;
+                border-width: 1px;
+                border-color: root.accent;
+                border-radius: 10px;
+
+                Text {
+                    text: root.shortcut-text;
+                    color: #11171c;
+                    font-size: 15px;
+                    font-weight: 650;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+
+            HorizontalLayout {
+                x: 18px;
+                y: 118px;
+                width: parent.width - 36px;
+                height: 16px;
+                alignment: space-between;
+
+                Text {
+                    text: root.mode == "available" ? "READY" : root.mode == "owner-found" ? "OWNER" : root.mode == "occupied" ? "BLOCKED" : root.mode == "reserved" ? "RESERVED" : root.mode == "locating" ? "LOCATING" : root.mode == "waiting-key" ? "LOCAL INPUT" : root.mode == "error" ? "ERROR" : "STANDBY";
+                    color: root.accent;
+                    font-size: 10px;
+                    font-weight: 700;
+                }
+                Text {
+                    text: root.evidence-text;
+                    color: #5e6c72;
+                    font-size: 10px;
+                    horizontal-alignment: right;
+                    overflow: elide;
+                }
+            }
+        }
+
+        HorizontalLayout {
+            x: 28px;
+            y: 314px;
+            width: parent.width - 56px;
+            height: 44px;
+            alignment: space-between;
+            spacing: 14px;
+
+            HorizontalLayout {
+                spacing: 7px;
+                VerticalLayout {
+                    width: 8px;
+                    alignment: center;
+                    Rectangle {
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 2px;
+                        background: root.accent;
+                    }
+                }
+                Text {
+                    text: root.mode == "waiting-key" ? "Esc 取消 · 只按目标键" : root.mode == "locating" ? "触发一次 · 观察进程消息" : "Windows 10 / 11";
+                    color: #59676d;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+            }
+
+            ActionButton {
+                width: 154px;
+                text: root.action-text;
+                enabled: root.action-enabled;
+                action-color: root.accent;
+                clicked => {
+                    if (root.mode == "waiting-key") {
+                        root.cancel-requested();
+                    } else if (root.mode == "occupied") {
+                        root.locate-owner();
+                    } else {
+                        root.begin-detection(root.ctrl-selected, root.alt-selected, root.shift-selected);
+                        capture-focus.focus();
+                    }
+                }
+            }
+        }
+
+    }
+}

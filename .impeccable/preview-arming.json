@@ -1,0 +1,9 @@
+{
+  "mode": "arming",
+  "state-title": "正在准备捕获",
+  "state-detail": "请稍候，准备完成后再按组合键。",
+  "shortcut-text": "准备中…",
+  "evidence-text": "正在安装临时按键捕获",
+  "action-text": "准备中",
+  "accent": "#007a7e"
+}

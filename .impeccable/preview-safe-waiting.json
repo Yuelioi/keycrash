@@ -1,0 +1,12 @@
+{
+  "mode": "waiting-key",
+  "state-title": "请按一个目标键",
+  "state-detail": "只按 A、F12、Space 等目标键；不要再按修饰键。",
+  "shortcut-text": "Ctrl + Alt + …",
+  "evidence-text": "只捕获 KeyCrash 当前窗口",
+  "action-text": "取消",
+  "accent": "#c9342a",
+  "ctrl-selected": true,
+  "alt-selected": true,
+  "shift-selected": false
+}

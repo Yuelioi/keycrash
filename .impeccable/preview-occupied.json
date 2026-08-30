@@ -1,0 +1,9 @@
+{
+  "mode": "occupied",
+  "state-title": "已被占用或系统保留",
+  "state-detail": "Windows 拒绝了临时注册；普通模式无法确认占用进程。",
+  "shortcut-text": "Ctrl + Shift + S",
+  "evidence-text": "运行时探测 · 错误 1409 · owner 未知",
+  "action-text": "再测一次",
+  "accent": "#c9342a"
+}

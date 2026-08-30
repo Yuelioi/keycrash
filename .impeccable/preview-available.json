@@ -1,0 +1,9 @@
+{
+  "mode": "available",
+  "state-title": "这个组合当前可用",
+  "state-detail": "Windows 接受了临时注册，KeyCrash 已立即释放它。",
+  "shortcut-text": "Ctrl + Alt + K",
+  "evidence-text": "运行时探测 · 可直接注册",
+  "action-text": "再测一次",
+  "accent": "#007a7e"
+}

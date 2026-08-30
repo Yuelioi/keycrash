@@ -1,0 +1,12 @@
+{
+  "mode": "occupied",
+  "state-title": "已被占用或系统保留",
+  "state-detail": "Windows 拒绝了临时注册；此接口不提供占用进程信息。",
+  "shortcut-text": "Ctrl + Alt + A",
+  "evidence-text": "运行时探测 · 错误 1409 · owner 未知",
+  "action-text": "再测一次",
+  "accent": "#c9342a",
+  "ctrl-selected": true,
+  "alt-selected": true,
+  "shift-selected": false
+}

@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-31T00:15:00+08:00",
+  "title": "Design System: KeyCrash",
+  "extensions": {
+    "source": {
+      "framework": "Slint",
+      "primary": "ui/app-window.slint",
+      "runtimeStateSource": "src/main.rs",
+      "renderedEvidence": [
+        ".impeccable/screenshots/safe-idle-final4.png",
+        ".impeccable/screenshots/safe-waiting-final4.png",
+        ".impeccable/screenshots/owner-locating.png",
+        ".impeccable/screenshots/owner-found-3.png",
+        ".impeccable/screenshots/owner-missed.png"
+      ]
+    },
+    "colorMeta": {
+      "collision-red": { "role": "primary", "displayName": "碰撞红" },
+      "ready-teal": { "role": "secondary", "displayName": "就绪青" },
+      "unsupported-ochre": { "role": "tertiary", "displayName": "受限赭" },
+      "error-rust": { "role": "tertiary", "displayName": "错误锈红" },
+      "ink": { "role": "neutral", "displayName": "仪表墨黑" },
+      "canvas-cool-gray": { "role": "neutral", "displayName": "冷灰机身" },
+      "panel-frost": { "role": "neutral", "displayName": "霜白面板" },
+      "readout-white": { "role": "neutral", "displayName": "读数白" },
+      "inverse-white": { "role": "neutral", "displayName": "反白文字" },
+      "logo-white": { "role": "neutral", "displayName": "键帽白" },
+      "border-steel": { "role": "neutral", "displayName": "钢灰边界" },
+      "tag-border": { "role": "neutral", "displayName": "标签钢线" },
+      "tag-text": { "role": "neutral", "displayName": "标签文字灰" },
+      "body-muted": { "role": "neutral", "displayName": "正文冷灰" },
+      "subtitle-muted": { "role": "neutral", "displayName": "副标题冷灰" },
+      "evidence-muted": { "role": "neutral", "displayName": "证据冷灰" },
+      "footer-muted": { "role": "neutral", "displayName": "页脚冷灰" },
+      "grid-active-horizontal": { "role": "neutral", "displayName": "激活横向网格" },
+      "grid-active-vertical": { "role": "neutral", "displayName": "激活纵向网格" },
+      "grid-idle-horizontal": { "role": "neutral", "displayName": "待机横向网格" },
+      "grid-idle-vertical": { "role": "neutral", "displayName": "待机纵向网格" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "状态结论", "purpose": "当前阶段与最终判断。" },
+      "brand": { "displayName": "品牌标题", "purpose": "KeyCrash 品牌名。" },
+      "shortcut": { "displayName": "快捷键读数", "purpose": "快捷键胶囊中的标准化组合。" },
+      "body": { "displayName": "状态解释", "purpose": "对当前结论和边界的简短说明。" },
+      "action": { "displayName": "主操作", "purpose": "唯一主按钮的状态文案。" },
+      "modifier-tag": { "displayName": "修饰键标签", "purpose": "Ctrl、Alt、Shift 的添加与移除状态。" },
+      "label": { "displayName": "仪器标签", "purpose": "STANDBY、LOCAL INPUT、READY、BLOCKED、ERROR。" }
+    },
+    "shadows": [
+      {
+        "name": "instrument-panel",
+        "value": "Slint: drop-shadow-color #26343c26; drop-shadow-offset-y 7px; drop-shadow-blur 18px",
+        "purpose": "只抬升主测量面板。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "action-opacity",
+        "value": "110ms ease-out",
+        "purpose": "ActionButton 的悬停、按下和禁用透明度切换。"
+      },
+      {
+        "name": "signal-trace-opacity",
+        "value": "160ms ease-out",
+        "purpose": "SignalTrace 在 waiting-key 与 locating 阶段淡入淡出。"
+      },
+      {
+        "name": "modifier-tag-state",
+        "value": "110ms ease-out",
+        "purpose": "ModifierTag 的背景与悬停、按下、锁定透明度切换。"
+      }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "维修台信号仪",
+    "overview": "KeyCrash 像一台放在 Windows 桌面上的便携维修仪：用户先用 Ctrl、Alt、Shift 标签和一个窗口内目标键完成安全冲突探测；确认占用后，可继续短时观察哪个进程取走匹配的 WM_HOTKEY。\n\n界面保持紧凑、直接和可信。等待目标键与定位占用软件时，单一状态色沿三条短轨汇入快捷键读数；结果落定后轨迹停止。找到软件时直接显示进程名、路径与 PID/TID，未观察到匹配消息时明确显示技术边界，不猜测 owner。\n\n规范来源是 `ui/app-window.slint`，并以安全输入、定位中、找到软件和未命中状态截图校验；运行时状态文案和状态色由 `src/main.rs` 注入。",
+    "keyCharacteristics": [
+      "冷灰、浅霜白与墨黑构成克制的维修仪表底盘。",
+      "同一时刻只有一个状态色贯穿标志、轨迹、读数边框、状态标签、指示点和主操作。",
+      "可增删的修饰键标签与一个窗口内目标键先完成安全查询；只有用户选择定位软件后才真实触发组合。",
+      "三路短轨在等待目标键或定位占用进程时汇入快捷键胶囊，是系统最具识别度的动态签名。",
+      "单窗口、单任务、单主操作；结果与证据始终同屏。"
+    ],
+    "rules": [
+      {
+        "name": "The One Active Signal Rule",
+        "body": "同一状态只使用一个强调色，并让它同步驱动品牌下划线、轨迹、读数边框、状态标签、指示点和主按钮。",
+        "section": "colors"
+      },
+      {
+        "name": "The Color Never Stands Alone Rule",
+        "body": "可用、占用、受限和错误都必须同时提供中文结论与文字证据，不能只靠青、红、赭或锈红表达；ModifierTag 也必须同时通过 `+` / `×` 文案表达未选与已选。",
+        "section": "colors"
+      },
+      {
+        "name": "The Readout Before Metadata Rule",
+        "body": "用户先读中文结论和快捷键，再读英文状态词与证据；小型仪器标签不得超过主要读数的视觉重量。",
+        "section": "typography"
+      },
+      {
+        "name": "The One-Screen Instrument Rule",
+        "body": "主要检测路径必须在单个 460×380 窗口内完成，不加入导航、滚动表格或第二个并列主操作。",
+        "section": "layout"
+      },
+      {
+        "name": "The Single Lift Rule",
+        "body": "每个窗口只抬升主测量面板；其他层次由色调、边框和焦点轮廓表达。",
+        "section": "elevation"
+      },
+      {
+        "name": "The Local Input Only Rule",
+        "body": "ModifierTag 负责修饰键，窗口焦点只负责单个目标键；两者不得退化为系统范围的完整组合监听。",
+        "section": "components"
+      },
+      {
+        "name": "The Observed Owner Rule",
+        "body": "只有进程内观察到精确匹配的 WM_HOTKEY 才能命名占用软件；不可用性、前台进程或时间相关性都不能冒充 owner 证据。",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do 让当前状态色贯穿所有信号节点，并让结果文字与颜色同步更新。",
+      "Do 让 Ctrl、Alt、Shift 通过可再次单击移除的 ModifierTag 明确表达当前选择。",
+      "Do 只在 `waiting-key` / `locating` 期间显示网格强化与信号轨迹，结果落定后恢复低噪声。",
+      "Do 保持结论、快捷键和证据同屏，并为每个状态提供清晰的下一步按钮文案。",
+      "Do 保留 Slint 原生键盘焦点、标签的空格/回车切换，以及 `waiting-key` 中的 `Esc` 取消行为。"
+    ],
+    "donts": [
+      "Don't 把维修台信号仪做成深色霓虹、发光 HUD 或多卡片仪表盘。",
+      "Don't 加入全量快捷键列表、导航侧栏或需要滚动查找的主路径。",
+      "Don't 用装饰动画让结果态持续闪烁；轨迹应在结论落定后停止。",
+      "Don't 在安全检测阶段安装全局 Hook，或让短时归因 Hook 在完成/超时后继续存在。",
+      "Don't 仅凭 1409、前台窗口或进程时间相关性命名占用软件；必须有匹配 WM_HOTKEY 的进程内证据。"
+    ]
+  }
+}

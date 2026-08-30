@@ -1,0 +1,13 @@
+{
+  "mode": "owner-found",
+  "state-title": "QQ.exe 占用了它",
+  "state-detail": "C:\\Program Files\\Tencent\\QQNT\\QQ.exe",
+  "shortcut-text": "Ctrl + Alt + A",
+  "evidence-text": "WM_HOTKEY · x64 · PID 38024 / TID 2432 · 原动作已拦截",
+  "action-text": "再测一次",
+  "action-enabled": true,
+  "accent": "#007a7e",
+  "ctrl-selected": true,
+  "alt-selected": true,
+  "shift-selected": false
+}

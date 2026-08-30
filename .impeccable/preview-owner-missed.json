@@ -1,0 +1,13 @@
+{
+  "mode": "error",
+  "state-title": "已占用，但没有观察到软件",
+  "state-detail": "可能来自低级 Hook、Raw Input、驱动，或目标忽略了模拟输入。",
+  "shortcut-text": "Ctrl + Alt + A",
+  "evidence-text": "x64 + x86 深度定位 · 未观察到 WM_HOTKEY",
+  "action-text": "再试一次",
+  "action-enabled": true,
+  "accent": "#8b6b16",
+  "ctrl-selected": true,
+  "alt-selected": true,
+  "shift-selected": false
+}

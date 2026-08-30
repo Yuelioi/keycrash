@@ -1,0 +1,13 @@
+{
+  "mode": "locating",
+  "state-title": "正在定位占用软件",
+  "state-detail": "观察目标进程的 WM_HOTKEY；通常在一秒内完成。",
+  "shortcut-text": "Ctrl + Alt + A",
+  "evidence-text": "x64 + x86 进程内消息 Hook · 原动作尽量拦截",
+  "action-text": "定位中…",
+  "action-enabled": false,
+  "accent": "#c9342a",
+  "ctrl-selected": true,
+  "alt-selected": true,
+  "shift-selected": false
+}

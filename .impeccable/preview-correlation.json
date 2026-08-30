@@ -1,0 +1,9 @@
+{
+  "mode": "occupied",
+  "state-title": "已被占用或系统保留",
+  "state-detail": "Windows 拒绝了临时注册；普通模式无法确认占用进程。",
+  "shortcut-text": "Ctrl + Shift + S",
+  "evidence-text": "低置信线索 · 启动 candidate.exe",
+  "action-text": "再测一次",
+  "accent": "#c9342a"
+}
