@@ -1,15 +1,22 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod detector;
+mod key_capture;
 mod owner_probe;
 
-use detector::{EvidenceSource, OwnerAttribution, ProbeReport, ProbeStatus, shortcut_from_parts};
+use detector::{
+    EvidenceSource, OwnerAttribution, ProbeReport, ProbeStatus, Shortcut, shortcut_from_parts,
+    shortcut_from_virtual_key,
+};
 use owner_probe::OwnerProbeResult;
 use slint::{Color, ComponentHandle, SharedString};
 use std::cell::RefCell;
+use std::ffi::OsString;
 use std::path::Path;
+use std::process::Command;
 use std::rc::Rc;
 use std::thread;
+use std::time::Duration;
 
 slint::include_modules!();
 
@@ -63,14 +70,7 @@ fn main() -> Result<(), slint::PlatformError> {
                     return;
                 }
             };
-
-            let report = detector::probe_shortcut(&shortcut);
-            if report.status == ProbeStatus::Blocked && report.system_rule.is_none() {
-                *last_blocked_shortcut.borrow_mut() = Some(shortcut.clone());
-            } else {
-                *last_blocked_shortcut.borrow_mut() = None;
-            }
-            apply_report(&ui, &shortcut.label(), report);
+            detect_shortcut(&ui, &last_blocked_shortcut, shortcut);
         });
     }
 
@@ -118,7 +118,90 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
+    {
+        let weak_ui = ui.as_weak();
+        ui.on_open_owner_location(move || {
+            let Some(ui) = weak_ui.upgrade() else {
+                return;
+            };
+            let owner_path = ui.get_owner_path();
+            if owner_path.is_empty() {
+                return;
+            }
+            if open_file_location(Path::new(owner_path.as_str())).is_err() {
+                ui.set_evidence_text(SharedString::from(
+                    "无法打开文件位置 · 请按上方路径手动打开",
+                ));
+            }
+        });
+    }
+
+    let _action_key_fallback = install_action_key_fallback(&ui, last_blocked_shortcut);
+
     ui.run()
+}
+
+fn install_action_key_fallback(
+    ui: &AppWindow,
+    last_blocked_shortcut: Rc<RefCell<Option<Shortcut>>>,
+) -> slint::Timer {
+    let timer = slint::Timer::default();
+    let weak_ui = ui.as_weak();
+    let virtual_keys = key_capture::supported_virtual_keys();
+    let mut capture = key_capture::ActionKeyCapture::default();
+
+    timer.start(
+        slint::TimerMode::Repeated,
+        Duration::from_millis(8),
+        move || {
+            let Some(ui) = weak_ui.upgrade() else {
+                return;
+            };
+
+            let armed =
+                ui.get_mode() == MODE_WAITING_KEY && key_capture::application_is_foreground();
+            if !armed {
+                capture.observe(false, false, std::iter::empty());
+                return;
+            }
+
+            let forbidden_modifier_down = key_capture::physical_modifier_is_down();
+            let key_states = virtual_keys
+                .iter()
+                .copied()
+                .map(|virtual_key| (virtual_key, key_capture::key_is_down(virtual_key)));
+            if let Some(virtual_key) = capture.observe(true, forbidden_modifier_down, key_states) {
+                if virtual_key == key_capture::VK_ESCAPE_CODE {
+                    ui.invoke_cancel_requested();
+                    return;
+                }
+
+                let shortcut = shortcut_from_virtual_key(
+                    ui.get_ctrl_selected(),
+                    ui.get_alt_selected(),
+                    ui.get_shift_selected(),
+                    virtual_key,
+                );
+                detect_shortcut(&ui, &last_blocked_shortcut, shortcut);
+            }
+        },
+    );
+
+    timer
+}
+
+fn detect_shortcut(
+    ui: &AppWindow,
+    last_blocked_shortcut: &RefCell<Option<Shortcut>>,
+    shortcut: Shortcut,
+) {
+    let report = detector::probe_shortcut(&shortcut);
+    if report.status == ProbeStatus::Blocked && report.system_rule.is_none() {
+        *last_blocked_shortcut.borrow_mut() = Some(shortcut.clone());
+    } else {
+        *last_blocked_shortcut.borrow_mut() = None;
+    }
+    apply_report(ui, &shortcut.label(), report);
 }
 
 fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
@@ -172,7 +255,7 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
 
 fn blocked_detail(report: &ProbeReport) -> &'static str {
     report.system_rule.map_or(
-        "冲突已确认；定位软件最多触发两次组合，并尽量拦截原动作。",
+        "冲突已确认；定位会真实触发组合，原动作可能执行。",
         |rule| rule.explanation(),
     )
 }
@@ -182,9 +265,9 @@ fn set_locating_owner(ui: &AppWindow, shortcut_label: &str) {
         ui,
         MODE_LOCATING,
         "正在定位占用软件",
-        "观察目标进程的 WM_HOTKEY；通常在一秒内完成。",
+        "先检查普通软件；未命中时再请求管理员权限。",
         shortcut_label,
-        "x64 + x86 进程内消息 Hook · 原动作尽量拦截",
+        "普通 / 管理员 × x64 / x86",
         "定位中…",
         color("C9342A"),
     );
@@ -196,24 +279,15 @@ fn apply_owner_report(ui: &AppWindow, shortcut_label: &str, report: OwnerProbeRe
             pid,
             thread_id,
             path,
-            suppressed,
+            suppressed: _,
             architecture,
         } => {
-            let process_name = Path::new(&path)
-                .file_name()
-                .and_then(|name| name.to_str())
-                .filter(|name| !name.is_empty())
-                .unwrap_or("未知进程");
-            let title = format!("{process_name} 占用了它");
+            let process_name = owner_display_name(&path);
+            let title = format!("{process_name}占用了它");
             let detail = if path.is_empty() {
                 format!("已在进程 {pid} 的消息队列中观察到匹配事件。")
             } else {
-                path
-            };
-            let suppression = if suppressed {
-                "原动作已拦截"
-            } else {
-                "原动作可能已执行"
+                path.clone()
             };
             set_view(
                 ui,
@@ -221,12 +295,13 @@ fn apply_owner_report(ui: &AppWindow, shortcut_label: &str, report: OwnerProbeRe
                 &title,
                 &detail,
                 shortcut_label,
-                &format!(
-                    "WM_HOTKEY · {architecture} · PID {pid} / TID {thread_id} · {suppression}"
-                ),
+                &owner_evidence(&architecture, pid, thread_id),
                 "再测一次",
                 color("007A7E"),
             );
+            if !path.is_empty() {
+                ui.set_owner_path(SharedString::from(path));
+            }
         }
         OwnerProbeResult::NotFound => set_view(
             ui,
@@ -295,7 +370,7 @@ fn set_waiting_for_key(ui: &AppWindow, ctrl: bool, alt: bool, shift: bool) {
         "请按一个目标键",
         "只按 A、F12、Space 等目标键；不要再按修饰键。",
         &modifier_preview(ctrl, alt, shift),
-        "只捕获 KeyCrash 当前窗口",
+        "",
         "取消",
         color("C9342A"),
     );
@@ -338,6 +413,34 @@ fn set_view(
     ui.set_action_text(SharedString::from(action));
     ui.set_action_enabled(mode != MODE_LOCATING);
     ui.set_accent(accent);
+    ui.set_owner_path(SharedString::new());
+}
+
+fn owner_display_name(path: &str) -> String {
+    Path::new(path)
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .unwrap_or("未知进程")
+        .into()
+}
+
+fn owner_evidence(architecture: &str, pid: u32, thread_id: u32) -> String {
+    format!("WM_HOTKEY · {architecture} · PID {pid} / TID {thread_id}")
+}
+
+fn explorer_select_argument(path: &Path) -> OsString {
+    let mut argument = OsString::from("/select,");
+    argument.push(path.as_os_str());
+    argument
+}
+
+fn open_file_location(path: &Path) -> Result<(), String> {
+    Command::new("explorer.exe")
+        .arg(explorer_select_argument(path))
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
 }
 
 fn color(hex: &str) -> Color {
@@ -402,7 +505,29 @@ mod tests {
 
         assert_eq!(
             blocked_detail(&report),
-            "冲突已确认；定位软件最多触发两次组合，并尽量拦截原动作。"
+            "冲突已确认；定位会真实触发组合，原动作可能执行。"
+        );
+    }
+
+    #[test]
+    fn owner_title_omits_only_the_executable_suffix() {
+        assert_eq!(owner_display_name("C:\\Apps\\Snipaste.exe"), "Snipaste");
+        assert_eq!(owner_display_name("C:\\Apps\\tool.beta.exe"), "tool.beta");
+    }
+
+    #[test]
+    fn owner_evidence_does_not_claim_that_the_action_was_blocked() {
+        assert_eq!(
+            owner_evidence("x64", 42, 7),
+            "WM_HOTKEY · x64 · PID 42 / TID 7"
+        );
+    }
+
+    #[test]
+    fn explorer_argument_selects_the_owner_executable() {
+        assert_eq!(
+            explorer_select_argument(Path::new("C:\\Apps\\Snipaste.exe")),
+            OsString::from("/select,C:\\Apps\\Snipaste.exe")
         );
     }
 }

@@ -3,8 +3,12 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $releaseRoot = Join-Path $projectRoot 'target\release'
 $x86Target = 'i686-pc-windows-msvc'
+$env:CARGO_TARGET_DIR = Join-Path $projectRoot 'target'
 
 cargo build --release --workspace --manifest-path (Join-Path $projectRoot 'Cargo.toml')
+if ($LASTEXITCODE -ne 0) {
+    throw "x64 release build failed with exit code $LASTEXITCODE"
+}
 
 $installedTargets = rustup target list --installed
 if ($installedTargets -notcontains $x86Target) {
@@ -15,6 +19,9 @@ cargo build --release --target $x86Target `
     -p keycrash-owner-hook `
     -p keycrash-owner-probe `
     --manifest-path (Join-Path $projectRoot 'Cargo.toml')
+if ($LASTEXITCODE -ne 0) {
+    throw "x86 release build failed with exit code $LASTEXITCODE"
+}
 
 $x86Release = Join-Path $projectRoot "target\$x86Target\release"
 $x86Bundle = Join-Path $releaseRoot 'owner-x86'

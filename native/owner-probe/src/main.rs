@@ -1,5 +1,8 @@
 use std::mem::size_of;
 use std::os::windows::ffi::OsStrExt;
+use std::os::windows::process::CommandExt;
+use std::path::PathBuf;
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use windows_sys::Win32::Foundation::{
@@ -24,6 +27,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 const MAGIC: u32 = 0x4B43_4F50;
 const MAPPING_NAME: *const u16 = windows_sys::w!("Local\\KeyCrashOwnerProbeV1");
 const EVENT_NAME: *const u16 = windows_sys::w!("Local\\KeyCrashOwnerProbeEventV1");
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -38,26 +42,50 @@ struct SharedData {
     suppressed: u32,
 }
 
-fn main() {
-    match parse_arguments()
-        .and_then(|(modifiers, virtual_key)| unsafe { locate_owner(modifiers, virtual_key) })
-    {
-        Ok(Some(owner)) => println!(
-            "FOUND\t{}\t{}\t{}\t{}",
-            owner.owner_pid,
-            owner.owner_thread_id,
-            owner.suppressed,
-            process_path(owner.owner_pid).unwrap_or_default()
-        ),
-        Ok(None) => println!("NOT_FOUND"),
-        Err(error) => {
-            println!("ERROR\t{}", error.replace(['\t', '\r', '\n'], " "));
-            std::process::exit(1);
-        }
-    }
+#[derive(Default)]
+struct ProbeOptions {
+    include_x86: bool,
+    output: Option<PathBuf>,
+    require_found: bool,
 }
 
-fn parse_arguments() -> Result<(u32, u32), String> {
+fn main() {
+    let (modifiers, virtual_key, options) = match parse_arguments() {
+        Ok(arguments) => arguments,
+        Err(error) => exit_with_line(format!("ERROR\t{error}"), None, 1),
+    };
+
+    let line = match unsafe { locate_owner(modifiers, virtual_key) } {
+        Ok(Some(owner)) => format_owner(&owner, "FOUND"),
+        Ok(None) if options.include_x86 => run_x86_fallback(modifiers, virtual_key)
+            .unwrap_or_else(|error| format!("ERROR\t{error}")),
+        Ok(None) => "NOT_FOUND".into(),
+        Err(error) => format!("ERROR\t{}", error.replace(['\t', '\r', '\n'], " ")),
+    };
+
+    let exit_code = if line.starts_with("ERROR\t") {
+        1
+    } else if options.require_found && line == "NOT_FOUND" {
+        2
+    } else {
+        0
+    };
+    exit_with_line(line, options.output.as_ref(), exit_code);
+}
+
+fn exit_with_line(line: String, output: Option<&PathBuf>, exit_code: i32) -> ! {
+    if let Some(path) = output
+        && let Err(error) = std::fs::write(path, &line)
+    {
+        println!("ERROR\tcannot write probe output: {error}");
+        std::process::exit(1);
+    }
+
+    println!("{line}");
+    std::process::exit(exit_code);
+}
+
+fn parse_arguments() -> Result<(u32, u32, ProbeOptions), String> {
     let mut arguments = std::env::args().skip(1);
     let modifiers = arguments
         .next()
@@ -69,7 +97,52 @@ fn parse_arguments() -> Result<(u32, u32), String> {
         .ok_or("missing virtual key")?
         .parse()
         .map_err(|_| "invalid virtual key")?;
-    Ok((modifiers, virtual_key))
+
+    let mut options = ProbeOptions::default();
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--include-x86" => options.include_x86 = true,
+            "--output" => {
+                options.output = Some(arguments.next().ok_or("missing output path")?.into());
+            }
+            "--require-found" => options.require_found = true,
+            _ => return Err(format!("unknown argument: {argument}")),
+        }
+    }
+
+    Ok((modifiers, virtual_key, options))
+}
+
+fn format_owner(owner: &SharedData, marker: &str) -> String {
+    format!(
+        "{marker}\t{}\t{}\t{}\t{}",
+        owner.owner_pid,
+        owner.owner_thread_id,
+        owner.suppressed,
+        process_path(owner.owner_pid).unwrap_or_default()
+    )
+}
+
+fn run_x86_fallback(modifiers: u32, virtual_key: u32) -> Result<String, String> {
+    let helper = sibling("owner-x86\\keycrash-owner-probe.exe")?;
+    if !helper.is_file() {
+        return Ok("NOT_FOUND".into());
+    }
+
+    let child = Command::new(&helper)
+        .arg(modifiers.to_string())
+        .arg(virtual_key.to_string())
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|error| format!("cannot start x86 probe: {error}"))?;
+    let line = String::from_utf8_lossy(&child.stdout).trim().to_string();
+    if let Some(found) = line.strip_prefix("FOUND\t") {
+        return Ok(format!("FOUND_X86\t{found}"));
+    }
+    if line == "NOT_FOUND" || line.starts_with("ERROR\t") {
+        return Ok(line);
+    }
+    Err("x86 probe returned an unrecognized result".into())
 }
 
 unsafe fn locate_owner(modifiers: u32, virtual_key: u32) -> Result<Option<SharedData>, String> {

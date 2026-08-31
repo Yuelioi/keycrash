@@ -131,6 +131,15 @@ pub fn shortcut_from_parts(
     shift: bool,
     action_key: &str,
 ) -> Result<Shortcut, ActionKeyParseError> {
+    Ok(shortcut_from_virtual_key(
+        ctrl,
+        alt,
+        shift,
+        parse_action_key(action_key)?,
+    ))
+}
+
+pub fn shortcut_from_virtual_key(ctrl: bool, alt: bool, shift: bool, virtual_key: u32) -> Shortcut {
     let mut modifiers = 0;
     if ctrl {
         modifiers |= MOD_CONTROL.0;
@@ -142,10 +151,10 @@ pub fn shortcut_from_parts(
         modifiers |= MOD_ALT.0;
     }
 
-    Ok(Shortcut {
+    Shortcut {
         modifiers,
-        virtual_key: parse_action_key(action_key)?,
-    })
+        virtual_key,
+    }
 }
 
 pub fn parse_action_key(input: &str) -> Result<u32, ActionKeyParseError> {
@@ -426,6 +435,8 @@ mod tests {
         assert_eq!(parse_action_key("Page Down"), Ok(VK_NEXT));
         assert_eq!(parse_action_key("Numpad 7"), Ok(VK_NUMPAD0 + 7));
         assert_eq!(parse_action_key("\u{F70F}"), Ok(VK_F1 + 11));
+        assert_eq!(parse_action_key("PrtSc"), Ok(VK_SNAPSHOT));
+        assert_eq!(parse_action_key("\u{F731}"), Ok(VK_SNAPSHOT));
         assert_eq!(parse_action_key("\n"), Ok(VK_RETURN));
         assert_eq!(parse_action_key(" "), Ok(VK_SPACE));
         assert_eq!(parse_action_key("+"), Ok(VK_OEM_PLUS));

@@ -8,6 +8,7 @@
 - [x] 点击开始后只在 KeyCrash 当前窗口读取一个普通目标键，再内部合成待测组合。
 - [x] 不安装全局键盘 hook，不发送完整快捷键，不做默认 owner 进程猜测。
 - [x] 覆盖目标键解析、修饰键拒绝、Esc 取消、占用探测与格式顺序。
+- [x] 为被第三方全局热键吞掉普通窗口事件的全部受支持目标键增加仅限前台等待态的 8ms 按下边沿兜底。
 - 验收：格式、测试、Clippy、release 构建全部通过。
 - [x] 实机验收：点选 Ctrl 与 Alt 后只按 `A`，QQ 未触发截图，KeyCrash 返回错误 1409。
 - 结论：安全输入实现、自动验证和 QQ 实机验收均已完成。
@@ -34,11 +35,13 @@
 
 - [x] 验证 `WH_GETMESSAGE` 在 `PM_REMOVE` 时可观察匹配 `WM_HOTKEY`、记录目标 PID，并改写为 `WM_NULL`。
 - [x] 独立实现 x64/x86 Helper + DLL；使用命名共享内存与 Event 传递固定 POD 证据。
-- [x] Release 嵌入管理员清单；深度定位最多按 x64 → x86 顺序触发两次组合。
+- [x] Release GUI 使用 `asInvoker`；普通 x64/x86 未命中时按需启动一次管理员 coordinator 覆盖双位数，最多触发四次组合。
 - [x] x64/x86 受控 fixtures 均返回精确 PID，且标准热键动作被拦截。
-- [x] UI 显示进程名、路径、架构、PID/TID 和 suppression 证据；未命中时不猜测。
+- [x] 正式线程消息 fixture 覆盖 Ctrl、裸键与裸键 + `MOD_NOREPEAT`，均返回精确 PID/TID 并抑制消息。
+- [x] UI 显示不带 `.exe` 的进程名、完整路径、架构与 PID/TID，提供打开文件位置；不再展示不可靠的 suppression 结论，未命中时不猜测。
+- [x] 右上角同窗帮助覆盖三步使用方法、真实触发风险和键盘返回。
 - [ ] QQ `Ctrl+Alt+A` 实机归因：确认是否命中 QQ 的 `WM_HOTKEY`，以及截图动作是否被拦截。
-- [ ] 为 elevated owner 和线程型 `RegisterHotKey(NULL, ...)` 增加正式可重复 fixture。
+- [ ] 为 elevated owner 增加正式可重复 fixture。
 
 ## 5. Windows v1 交付
 

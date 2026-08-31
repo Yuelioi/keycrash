@@ -12,23 +12,27 @@ KeyCrash 解决的是“我已经知道哪个快捷键有问题，只想立刻�
 - QQ 是已验证反例：普通 `WH_KEYBOARD_LL` 捕获无法保证阻止所有第三方热键动作，即使双方完整性级别相同且标准注册探针返回 1409。
 - 默认产品路径采用虚拟 Ctrl / Alt / Shift tags，加当前窗口内单个目标键捕获；不安装全局键盘 hook，也不真实触发完整组合。
 - 等待态只接受一个目标键；物理 Ctrl / Alt / Shift / Win 输入被忽略，Esc 取消。
+- F1、`PrtSc` 等普通 Winit 事件可能被第三方全局热键吞掉；仅在 KeyCrash 是前台进程且处于等待态时，每 8ms 轮询全部受支持目标键的 `GetAsyncKeyState` 最高位按下边沿作为兜底，不依赖不可靠的最低位。首次 tick 只建立基线，按住不重复，物理修饰键存在时不捕获。
 - 修饰键标签、预览和最终读数统一使用 Ctrl → Alt → Shift 顺序。
 - `RegisterHotKey` 与 `UnregisterHotKey` 在同一次同步探测调用中、同一线程配对完成。
 - `ProbeReport` 分离 status、错误码与已知 system rule；UI 文案从报告派生。
 - `Ctrl+Alt+Delete` 与 `Win+L` 规则只匹配精确 modifiers；F12 规则独立匹配调试器保留键。
-- owner 定位是已占用结果上的显式第二步；x64 Helper 先尝试，未命中再尝试 x86，最多真实触发两次完整组合。
+- owner 定位是已占用结果上的显式第二步；普通 x64/x86 Helper 先尝试，均未命中时再由一次 UAC 启动管理员 x64 coordinator 覆盖 x64/x86，最多真实触发四次完整组合。
 - Hook DLL 在 `PM_REMOVE` 阶段直接记录 `GetCurrentProcessId()` / TID，不依赖可能为 NULL 的 `MSG.hwnd`；精确匹配后尽量把消息改成 `WM_NULL`。
 - 低级 Hook、Raw Input、驱动或拒绝注入输入的软件可能先响应或不产生 `WM_HOTKEY`；suppression 只能标为 best effort。
 - x64/x86 Helper 与 DLL 通过固定大小的命名共享内存 + Event 协作，定位完成或超时即卸载 Hook。
 - Hotkey Detective 为 GPL-3.0；KeyCrash 仅参考公开机制与 Win32 文档，正式实现独立重写。
 - 默认模式不做 Toolhelp32 进程快照或时间相关性猜测；失败时明确显示 owner 未知。
-- UAC 不会让 `RegisterHotKey` 直接返回 owner，但能让进程内消息 Hook 覆盖管理员注册者；当前 Release 按用户要求默认 `requireAdministrator`。
+- GUI 固定使用 `asInvoker`：管理员 GUI 位于前台时会阻断普通软件的注入热键链，Snipaste F1 已实证从 FOUND 退化为 NOT_FOUND。UAC 只用于普通定位未命中后的短生命周期管理员 helper。
 
 ## UX decisions
 
 - 中文首发，460×380 单窗口、单主操作。
 - 视觉方向是“维修台信号仪”：冷灰面板、单一状态色、捕获时三路轨迹汇入读数胶囊，结果态恢复安静。
 - 状态不能只靠颜色表达；按钮必须支持 Tab、Space、Enter，Esc 取消捕获。
+- owner 标题使用不带 `.exe` 的文件 stem；完整路径保留，成功态提供“打开文件位置”。界面只陈述观察到的 WM_HOTKEY/PID/TID，不声称原动作已拦截。
+- 右上角“？”使用同窗帮助面板渐进披露三步流程与真实触发风险，不新增窗口；“×”或 Esc 返回原状态。
+- 描边次操作的黑色焦点环只表达键盘导航焦点；鼠标点击不主动聚焦，点击后保持默认钢灰描边。
 
 ## Validation baseline
 
@@ -36,6 +40,7 @@ KeyCrash 解决的是“我已经知道哪个快捷键有问题，只想立刻�
 - `cargo test`
 - `cargo clippy -- -D warnings`
 - `scripts/build-release.ps1`
+- `scripts/test-owner-fixture.ps1`
 - x64/x86 受控 owner fixture 返回精确 PID 且 `WM_HOTKEY` 被改写。
 - Slint Viewer 对 idle、waiting-key、occupied、locating、owner-found、owner-missed 状态截图验证。
 
