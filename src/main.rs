@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod detector;
+mod i18n;
 mod key_capture;
 mod owner_probe;
 
@@ -34,6 +35,18 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     let last_blocked_shortcut = Rc::new(RefCell::new(None));
     set_idle(&ui);
+
+    {
+        let weak_ui = ui.as_weak();
+        ui.on_language_changed(move |code| {
+            let Some(ui) = weak_ui.upgrade() else {
+                return;
+            };
+            let language = i18n::Language::from_code(code.as_str());
+            ui.set_language(code);
+            relocalize_view(&ui, language);
+        });
+    }
 
     {
         let weak_ui = ui.as_weak();
@@ -129,9 +142,11 @@ fn main() -> Result<(), slint::PlatformError> {
                 return;
             }
             if open_file_location(Path::new(owner_path.as_str())).is_err() {
-                ui.set_evidence_text(SharedString::from(
+                let language = i18n::Language::from_code(ui.get_language().as_str());
+                ui.set_evidence_text(SharedString::from(i18n::text(
+                    language,
                     "无法打开文件位置 · 请按上方路径手动打开",
-                ));
+                )));
             }
         });
     }
@@ -318,11 +333,16 @@ fn apply_owner_report(ui: &AppWindow, shortcut_label: &str, report: OwnerProbeRe
 }
 
 fn set_owner_error(ui: &AppWindow, error: &str) {
+    let detail = if i18n::Language::from_code(ui.get_language().as_str()) == i18n::Language::Zh {
+        error
+    } else {
+        "深度定位组件返回错误，请再试一次。"
+    };
     set_view(
         ui,
         MODE_ERROR,
         "定位没有完成",
-        error,
+        detail,
         "占用软件未知",
         "深度定位组件错误",
         "重新检测",
@@ -405,15 +425,44 @@ fn set_view(
     action: &str,
     accent: Color,
 ) {
+    let language = i18n::Language::from_code(ui.get_language().as_str());
     ui.set_mode(SharedString::from(mode));
-    ui.set_state_title(SharedString::from(title));
-    ui.set_state_detail(SharedString::from(detail));
-    ui.set_shortcut_text(SharedString::from(shortcut));
-    ui.set_evidence_text(SharedString::from(evidence));
-    ui.set_action_text(SharedString::from(action));
+    ui.set_state_title(SharedString::from(i18n::text(language, title)));
+    ui.set_state_detail(SharedString::from(i18n::text(language, detail)));
+    ui.set_shortcut_text(SharedString::from(i18n::text(language, shortcut)));
+    ui.set_evidence_text(SharedString::from(i18n::text(language, evidence)));
+    ui.set_action_text(SharedString::from(i18n::text(language, action)));
     ui.set_action_enabled(mode != MODE_LOCATING);
     ui.set_accent(accent);
     ui.set_owner_path(SharedString::new());
+}
+
+fn relocalize_view(ui: &AppWindow, language: i18n::Language) {
+    let owner_error =
+        i18n::text(i18n::Language::Zh, ui.get_state_title().as_str()) == "定位没有完成";
+    ui.set_state_title(SharedString::from(i18n::text(
+        language,
+        ui.get_state_title().as_str(),
+    )));
+    let current_detail = ui.get_state_detail();
+    let detail = if owner_error {
+        "深度定位组件返回错误，请再试一次。"
+    } else {
+        current_detail.as_str()
+    };
+    ui.set_state_detail(SharedString::from(i18n::text(language, detail)));
+    ui.set_shortcut_text(SharedString::from(i18n::text(
+        language,
+        ui.get_shortcut_text().as_str(),
+    )));
+    ui.set_evidence_text(SharedString::from(i18n::text(
+        language,
+        ui.get_evidence_text().as_str(),
+    )));
+    ui.set_action_text(SharedString::from(i18n::text(
+        language,
+        ui.get_action_text().as_str(),
+    )));
 }
 
 fn owner_display_name(path: &str) -> String {

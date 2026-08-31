@@ -101,6 +101,8 @@ component ModifierTag inherits Rectangle {
     in property <string> text;
     in property <bool> selected;
     in property <bool> enabled: true;
+    in property <string> add-label: "添加 ";
+    in property <string> remove-label: "移除 ";
     callback toggled;
 
     width: 58px;
@@ -115,7 +117,7 @@ component ModifierTag inherits Rectangle {
     accessible-enabled: root.enabled;
     accessible-checkable: true;
     accessible-checked: root.selected;
-    accessible-label: root.selected ? "移除 " + root.text : "添加 " + root.text;
+    accessible-label: root.selected ? root.remove-label + root.text : root.add-label + root.text;
     accessible-action-default => { touch.clicked(); }
 
     animate background, opacity { duration: 110ms; easing: ease-out; }
@@ -262,6 +264,7 @@ export component AppWindow inherits Window {
     in-out property <bool> shift-selected: false;
     in-out property <bool> action-enabled: true;
     in-out property <string> owner-path: "";
+    in-out property <string> language: "zh";
     property <bool> help-visible: false;
 
     callback begin-detection(bool, bool, bool);
@@ -270,6 +273,7 @@ export component AppWindow inherits Window {
     callback modifiers-changed();
     callback locate-owner();
     callback open-owner-location();
+    callback language-changed(string);
 
     Rectangle {
         x: 0px;
@@ -345,7 +349,7 @@ export component AppWindow inherits Window {
                         font-weight: 700;
                     }
                     Text {
-                        text: "一按，找到快捷键冲突";
+                        text: root.language == "en" ? "One key to find the conflict" : root.language == "ja" ? "1 キーで競合を検出" : "一按，找到快捷键冲突";
                         color: #536168;
                         font-size: 11px;
                     }
@@ -412,6 +416,8 @@ export component AppWindow inherits Window {
 
                 ModifierTag {
                     text: "Ctrl";
+                    add-label: root.language == "en" ? "Add " : root.language == "ja" ? "追加 " : "添加 ";
+                    remove-label: root.language == "en" ? "Remove " : root.language == "ja" ? "削除 " : "移除 ";
                     selected: root.ctrl-selected;
                     enabled: root.mode != "waiting-key" && root.mode != "locating";
                     toggled => {
@@ -421,6 +427,8 @@ export component AppWindow inherits Window {
                 }
                 ModifierTag {
                     text: "Alt";
+                    add-label: root.language == "en" ? "Add " : root.language == "ja" ? "追加 " : "添加 ";
+                    remove-label: root.language == "en" ? "Remove " : root.language == "ja" ? "削除 " : "移除 ";
                     selected: root.alt-selected;
                     enabled: root.mode != "waiting-key" && root.mode != "locating";
                     toggled => {
@@ -430,6 +438,8 @@ export component AppWindow inherits Window {
                 }
                 ModifierTag {
                     text: "Shift";
+                    add-label: root.language == "en" ? "Add " : root.language == "ja" ? "追加 " : "添加 ";
+                    remove-label: root.language == "en" ? "Remove " : root.language == "ja" ? "削除 " : "移除 ";
                     selected: root.shift-selected;
                     enabled: root.mode != "waiting-key" && root.mode != "locating";
                     toggled => {
@@ -445,7 +455,11 @@ export component AppWindow inherits Window {
                 width: 190px;
                 height: 38px;
                 visible: root.mode != "waiting-key" && root.mode != "locating";
-                text: root.ctrl-selected || root.alt-selected || root.shift-selected ? "已选 tag 可再次单击移除" : "单击添加需要的修饰键";
+                text: root.language == "en"
+                    ? (root.ctrl-selected || root.alt-selected || root.shift-selected ? "Click a selected tag to remove it" : "Add the modifiers you need")
+                    : root.language == "ja"
+                        ? (root.ctrl-selected || root.alt-selected || root.shift-selected ? "選択済みのタグをクリックして削除" : "必要な修飾キーを追加")
+                        : (root.ctrl-selected || root.alt-selected || root.shift-selected ? "已选 tag 可再次单击移除" : "单击添加需要的修饰键");
                 color: #5e6c72;
                 font-size: 11px;
                 wrap: word-wrap;
@@ -518,7 +532,7 @@ export component AppWindow inherits Window {
                 height: 44px;
                 corner-radius: 10px;
                 label-size: 12px;
-                text: "打开文件位置";
+                text: root.language == "en" ? "Open file location" : root.language == "ja" ? "ファイルの場所を開く" : "打开文件位置";
                 enabled: root.owner-path != "";
                 clicked => { root.open-owner-location(); }
             }
@@ -536,7 +550,11 @@ export component AppWindow inherits Window {
                     }
                 }
                 Text {
-                    text: root.mode == "waiting-key" ? "Esc 取消 · 只按目标键" : root.mode == "locating" ? "触发一次 · 观察进程消息" : "Windows 10 / 11";
+                    text: root.mode == "waiting-key"
+                        ? (root.language == "en" ? "Esc cancels · Target key only" : root.language == "ja" ? "Esc でキャンセル · 対象キーのみ" : "Esc 取消 · 只按目标键")
+                        : root.mode == "locating"
+                            ? (root.language == "en" ? "One trigger · Observe process messages" : root.language == "ja" ? "1 回送信 · プロセスメッセージを観測" : "触发一次 · 观察进程消息")
+                            : "Windows 10 / 11";
                     color: #59676d;
                     font-size: 11px;
                     vertical-alignment: center;
@@ -593,7 +611,7 @@ export component AppWindow inherits Window {
                     y: 17px;
                     width: parent.width - 40px;
                     height: 28px;
-                    text: "怎么使用";
+                    text: root.language == "en" ? "How to use" : root.language == "ja" ? "使い方" : "怎么使用";
                     color: #11171c;
                     font-size: 25px;
                     font-weight: 700;
@@ -604,7 +622,7 @@ export component AppWindow inherits Window {
                     y: 57px;
                     width: parent.width - 40px;
                     height: 22px;
-                    text: "1  选择修饰键";
+                    text: root.language == "en" ? "1  Choose modifiers" : root.language == "ja" ? "1  修飾キーを選択" : "1  选择修饰键";
                     color: #11171c;
                     font-size: 13px;
                     font-weight: 650;
@@ -614,7 +632,7 @@ export component AppWindow inherits Window {
                     y: 78px;
                     width: parent.width - 58px;
                     height: 32px;
-                    text: "点选 Ctrl、Alt、Shift；不需要修饰键时可直接开始。";
+                    text: root.language == "en" ? "Select Ctrl, Alt, or Shift. Start directly if none is needed." : root.language == "ja" ? "Ctrl、Alt、Shift を選択。不要な場合はそのまま開始します。" : "点选 Ctrl、Alt、Shift；不需要修饰键时可直接开始。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;
@@ -625,7 +643,7 @@ export component AppWindow inherits Window {
                     y: 116px;
                     width: parent.width - 40px;
                     height: 22px;
-                    text: "2  输入目标键";
+                    text: root.language == "en" ? "2  Enter the target key" : root.language == "ja" ? "2  対象キーを入力" : "2  输入目标键";
                     color: #11171c;
                     font-size: 13px;
                     font-weight: 650;
@@ -635,7 +653,7 @@ export component AppWindow inherits Window {
                     y: 137px;
                     width: parent.width - 58px;
                     height: 32px;
-                    text: "点“开始检测”，再按 A、F1、PrtSc 等一个目标键。";
+                    text: root.language == "en" ? "Choose Start check, then press one key such as A, F1, or PrtSc." : root.language == "ja" ? "「検出を開始」を選び、A、F1、PrtSc などを 1 つ押します。" : "点“开始检测”，再按 A、F1、PrtSc 等一个目标键。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;
@@ -646,7 +664,7 @@ export component AppWindow inherits Window {
                     y: 175px;
                     width: parent.width - 40px;
                     height: 22px;
-                    text: "3  定位占用软件";
+                    text: root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを特定" : "3  定位占用软件";
                     color: #11171c;
                     font-size: 13px;
                     font-weight: 650;
@@ -656,7 +674,7 @@ export component AppWindow inherits Window {
                     y: 196px;
                     width: parent.width - 58px;
                     height: 44px;
-                    text: "显示“已被占用”后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
+                    text: root.language == "en" ? "When shown as in use, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "使用中と表示されたら「特定」を選びます。ショートカットの操作が実行される場合があります。" : "显示“已被占用”后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;
@@ -667,7 +685,7 @@ export component AppWindow inherits Window {
                     y: 252px;
                     width: parent.width - 40px;
                     height: 18px;
-                    text: "Esc 或右上角 × 返回";
+                    text: root.language == "en" ? "Esc or × returns" : root.language == "ja" ? "Esc または × で戻る" : "Esc 或右上角 × 返回";
                     color: #59676d;
                     font-size: 11px;
                 }
@@ -680,7 +698,7 @@ export component AppWindow inherits Window {
             width: 30px;
             height: 30px;
             text: root.help-visible ? "×" : "?";
-            accessible-name: root.help-visible ? "关闭使用说明" : "打开使用说明";
+            accessible-name: root.language == "en" ? (root.help-visible ? "Close instructions" : "Open instructions") : root.language == "ja" ? (root.help-visible ? "使い方を閉じる" : "使い方を開く") : (root.help-visible ? "关闭使用说明" : "打开使用说明");
             enabled: root.mode != "locating";
             clicked => {
                 if (root.help-visible) {
@@ -693,6 +711,17 @@ export component AppWindow inherits Window {
                     help-focus.focus();
                 }
             }
+        }
+
+        HorizontalLayout {
+            x: 312px;
+            y: 26px;
+            width: 82px;
+            height: 30px;
+            spacing: 2px;
+            OutlineButton { width: 26px; text: "中"; accessible-name: "中文"; enabled: root.language != "zh" && root.mode != "locating"; clicked => { root.language-changed("zh"); } }
+            OutlineButton { width: 26px; text: "EN"; label-size: 10px; accessible-name: "English"; enabled: root.language != "en" && root.mode != "locating"; clicked => { root.language-changed("en"); } }
+            OutlineButton { width: 26px; text: "日"; accessible-name: "日本語"; enabled: root.language != "ja" && root.mode != "locating"; clicked => { root.language-changed("ja"); } }
         }
 
     }

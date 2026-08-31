@@ -23,12 +23,13 @@
 - 默认进程快照与低置信 owner 猜测已移除，避免把时间相关性呈现为归因证据。
 - x64 与 x86 受控 `RegisterHotKey` fixtures 均返回了精确 PID，且目标程序未收到原 `WM_HOTKEY`；正式线程消息 fixture 另覆盖 Ctrl、裸键、裸键 + `MOD_NOREPEAT`。
 - 18 项测试、workspace 测试、格式检查、Clippy、Slint 检查、owner fixture、Release 构建、三态视觉检查与 UIA 功能验证已通过。
+- 主界面已支持中文、English、日本語三语切换；帮助、可访问性和运行时结果同步本地化，切换保留当前状态。
 - 用户已完成 QQ `Ctrl+Alt+A` 实机验收：只按目标键即可得到 1409，QQ 未被触发。
 - 产品、视觉方向和实际设计 tokens 已记录；恢复后的快照与焦点语义修复已分别提交。
 
 ## Next
 
-让用户目视验收最新 Release 的右上角帮助、Snipaste owner 标题和“打开文件位置”；随后继续 QQ `Ctrl+Alt+A` 归因验收，并补正式 elevated owner fixture。实现入口见 [界面实现](../../../ui/app-window.slint) 与 [owner probe](../../../src/owner_probe.rs)。
+让用户目视验收中、英、日三种语言的待机、帮助和 owner 结果态；随后继续 QQ `Ctrl+Alt+A` 归因验收，并补正式 elevated owner fixture。实现入口见 [界面实现](../../../ui/app-window.slint) 与 [语言包](../../../src/i18n.rs)。
 
 ## Execution pointer
 
@@ -44,6 +45,7 @@
 - UIA + 80ms F1 红灯从 `WAITING=True / CAPTURED_F1=False` 转为 `WAITING=False / CAPTURED_F1=True / BLOCKED=True`；随后自动定位显示 Snipaste.exe 与版本化路径，完整输入到 owner 链路已转绿。
 - 按用户验收清单新增 owner 文件位置动作与同窗帮助，移除 `.exe`、本地捕获范围和拦截成功文案；真实 F5 owner fixture 验证标题、路径按钮、Explorer 打开、帮助 Esc 返回与可访问性树，待机/帮助/owner 三态视觉检查无溢出。
 - 用 Slint 1.17 的 `focus-on-click: false` 与 `FocusReason` 分离焦点所有权和视觉；真实鼠标点击后焦点为 `False`，Tab 聚焦为 `True`，截图确认黑色焦点环仍显示。
+- 新增中 / EN / 日语言切换，集中语言包覆盖主流程结果，Slint 覆盖帮助、固定标签与可访问性；20 项测试、格式、Clippy 与 Release 构建通过。
 
 ## References
 
