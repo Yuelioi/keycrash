@@ -185,6 +185,8 @@ component OutlineButton inherits Rectangle {
 
     animate background, opacity { duration: 110ms; easing: ease-out; }
 
+    property <bool> focus-ring-visible: false;
+
     Text {
         text: root.text;
         color: #344249;
@@ -201,6 +203,14 @@ component OutlineButton inherits Rectangle {
         width: parent.width;
         height: parent.height;
         enabled: root.enabled;
+        focus-on-click: false;
+        focus-gained(reason) => {
+            root.focus-ring-visible = reason == FocusReason.tab-navigation
+                || reason == FocusReason.programmatic;
+        }
+        focus-lost => {
+            root.focus-ring-visible = false;
+        }
         key-pressed(event) => {
             if (event.text == Key.Space || event.text == Key.Return) {
                 touch.clicked();
@@ -212,13 +222,17 @@ component OutlineButton inherits Rectangle {
 
     touch := TouchArea {
         enabled: root.enabled;
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down && focus-scope.has-focus) {
+                focus-scope.clear-focus();
+            }
+        }
         clicked => {
-            focus-scope.focus();
             root.clicked();
         }
     }
 
-    if (focus-scope.has-focus && root.enabled) : Rectangle {
+    if (focus-scope.has-focus && root.focus-ring-visible && root.enabled) : Rectangle {
         x: -2px;
         y: -2px;
         width: parent.width + 4px;

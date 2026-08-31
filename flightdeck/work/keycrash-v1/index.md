@@ -19,15 +19,16 @@
 - 探测结果结构化为状态、错误码和系统规则；失败 1409 可继续获得进程文件名、完整路径、架构与 PID/TID。
 - owner 成功态标题去掉 `.exe`，只显示“软件名占用了它”；完整路径保留，并提供“打开文件位置”在资源管理器中选中可执行文件。证据不再宣称原动作已拦截。
 - 右上角“？”打开同窗三步使用说明，“×”或 Esc 返回；定位过程中入口禁用。
+- 描边次操作区分“焦点所有权”和“焦点环显示”：鼠标不夺取焦点；Tab 或辅助技术聚焦时显示黑色焦点环。
 - 默认进程快照与低置信 owner 猜测已移除，避免把时间相关性呈现为归因证据。
 - x64 与 x86 受控 `RegisterHotKey` fixtures 均返回了精确 PID，且目标程序未收到原 `WM_HOTKEY`；正式线程消息 fixture 另覆盖 Ctrl、裸键、裸键 + `MOD_NOREPEAT`。
 - 18 项测试、workspace 测试、格式检查、Clippy、Slint 检查、owner fixture、Release 构建、三态视觉检查与 UIA 功能验证已通过。
 - 用户已完成 QQ `Ctrl+Alt+A` 实机验收：只按目标键即可得到 1409，QQ 未被触发。
-- 产品、视觉方向和实际设计 tokens 已记录；仓库尚无首次提交。
+- 产品、视觉方向和实际设计 tokens 已记录；恢复后的快照与焦点语义修复已分别提交。
 
 ## Next
 
-让用户在当前唯一 Release（PID 20580）目视验收右上角帮助、Snipaste owner 标题和“打开文件位置”；随后继续 QQ `Ctrl+Alt+A` 归因验收，并补正式 elevated owner fixture。实现入口见 [界面实现](../../../ui/app-window.slint) 与 [owner probe](../../../src/owner_probe.rs)。
+让用户目视验收最新 Release 的右上角帮助、Snipaste owner 标题和“打开文件位置”；随后继续 QQ `Ctrl+Alt+A` 归因验收，并补正式 elevated owner fixture。实现入口见 [界面实现](../../../ui/app-window.slint) 与 [owner probe](../../../src/owner_probe.rs)。
 
 ## Execution pointer
 
@@ -42,6 +43,7 @@
 - 差分复现确认：管理员前台窗口会让普通 Snipaste 的 F1 注入链返回 NOT_FOUND；同一 helper 在普通前台精确返回 Snipaste PID 14456。GUI 已按研究结论改为普通权限，管理员覆盖收进按需 helper seam；旧红灯退出码 2 在新版普通前台变为 0。
 - UIA + 80ms F1 红灯从 `WAITING=True / CAPTURED_F1=False` 转为 `WAITING=False / CAPTURED_F1=True / BLOCKED=True`；随后自动定位显示 Snipaste.exe 与版本化路径，完整输入到 owner 链路已转绿。
 - 按用户验收清单新增 owner 文件位置动作与同窗帮助，移除 `.exe`、本地捕获范围和拦截成功文案；真实 F5 owner fixture 验证标题、路径按钮、Explorer 打开、帮助 Esc 返回与可访问性树，待机/帮助/owner 三态视觉检查无溢出。
+- 用 Slint 1.17 的 `focus-on-click: false` 与 `FocusReason` 分离焦点所有权和视觉；真实鼠标点击后焦点为 `False`，Tab 聚焦为 `True`，截图确认黑色焦点环仍显示。
 
 ## References
 
