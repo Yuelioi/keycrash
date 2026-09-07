@@ -620,7 +620,7 @@ export component AppWindow inherits Window {
                 alignment: space-between;
 
                 Text {
-                    text: root.mode == "available" ? "READY" : root.mode == "owner-found" ? "OWNER" : root.mode == "occupied" ? "BLOCKED" : root.mode == "reserved" ? "RESERVED" : root.mode == "locating" ? "LOCATING" : root.mode == "waiting-key" ? "LOCAL INPUT" : root.mode == "error" ? "ERROR" : "STANDBY";
+                    text: root.mode == "available" ? "NO CONFLICT" : root.mode == "owner-found" ? "OWNER" : root.mode == "occupied" ? "BLOCKED" : root.mode == "reserved" ? "RESERVED" : root.mode == "locating" ? "LOCATING" : root.mode == "waiting-key" ? "LOCAL INPUT" : root.mode == "error" ? "ERROR" : "STANDBY";
                     color: root.accent;
                     font-size: 10px;
                     font-weight: 700;
@@ -791,7 +791,7 @@ export component AppWindow inherits Window {
                     y: 196px;
                     width: parent.width - 58px;
                     height: 44px;
-                    text: root.language == "en" ? "When shown as in use, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "使用中と表示されたら「特定」を選びます。ショートカットの操作が実行される場合があります。" : "显示“已被占用”后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
+                    text: root.language == "en" ? "If a registration conflict is found, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "登録の競合があれば「特定」を選びます。ショートカットの操作が実行される場合があります。" : "发现注册冲突后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;

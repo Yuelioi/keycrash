@@ -225,8 +225,8 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
         ProbeStatus::Available => set_view(
             ui,
             MODE_AVAILABLE,
-            "这个组合当前可用",
-            "Windows 接受了临时注册，KeyCrash 已立即释放它。",
+            "未发现注册冲突",
+            "其他软件仍可能监听此键；本次临时注册已释放。",
             shortcut_label,
             &evidence_label(&report),
             "再测一次",
@@ -241,7 +241,11 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
             set_view(
                 ui,
                 mode,
-                "已被占用或系统保留",
+                if report.system_rule.is_some() {
+                    "系统保留快捷键"
+                } else {
+                    "已发现注册冲突"
+                },
                 blocked_detail(&report),
                 shortcut_label,
                 &evidence_label(&report),
@@ -250,7 +254,11 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
                 } else {
                     "定位占用软件"
                 },
-                color("C9342A"),
+                if report.system_rule.is_some() {
+                    color("8B6B16")
+                } else {
+                    color("C9342A")
+                },
             );
         }
         ProbeStatus::Error => {
@@ -354,14 +362,14 @@ fn set_owner_error(ui: &AppWindow, error: &str) {
 fn evidence_label(report: &ProbeReport) -> String {
     match (report.source, report.owner) {
         (EvidenceSource::RuntimeProbe, OwnerAttribution::NotApplicable) => {
-            "运行时探测 · 可直接注册".into()
+            "注册检测 · 不涵盖所有键盘监听".into()
         }
         (EvidenceSource::RuntimeProbe, OwnerAttribution::Unknown) => {
             let code = report.code.unwrap_or_default();
             format!("运行时探测 · 错误 {code} · owner 未知")
         }
-        (EvidenceSource::RuntimeProbeWithSystemRule, OwnerAttribution::KnownSystem) => {
-            "系统规则 + 运行时探测".into()
+        (EvidenceSource::SystemRule, OwnerAttribution::KnownSystem) => {
+            "Windows 系统规则 · 未尝试注册".into()
         }
         (EvidenceSource::SystemError, _) => {
             let code = report.code.unwrap_or_default();
@@ -389,7 +397,7 @@ fn set_waiting_for_key(ui: &AppWindow, ctrl: bool, alt: bool, shift: bool) {
         ui,
         MODE_WAITING_KEY,
         "请按一个目标键",
-        "只按 A、F12、Space 等目标键；不要再按修饰键。",
+        "只按 A、F9、Space 等目标键；不要再按修饰键。",
         &modifier_preview(ctrl, alt, shift),
         "",
         "取消",
@@ -533,13 +541,13 @@ mod tests {
     fn evidence_label_distinguishes_system_rules() {
         let report = ProbeReport {
             status: ProbeStatus::Blocked,
-            source: EvidenceSource::RuntimeProbeWithSystemRule,
+            source: EvidenceSource::SystemRule,
             owner: OwnerAttribution::KnownSystem,
-            code: Some(1409),
+            code: None,
             system_rule: Some(SystemRule::LockWorkstation),
             detail: None,
         };
-        assert_eq!(evidence_label(&report), "系统规则 + 运行时探测");
+        assert_eq!(evidence_label(&report), "Windows 系统规则 · 未尝试注册");
     }
 
     #[test]

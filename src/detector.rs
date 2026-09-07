@@ -70,7 +70,7 @@ pub enum ActionKeyParseError {
 impl ActionKeyParseError {
     pub fn message(&self) -> String {
         match self {
-            Self::Empty => "请按一个目标键，例如 A、F12 或 Space。".into(),
+            Self::Empty => "请按一个目标键，例如 A、F9 或 Space。".into(),
             Self::ModifierInInput => "Ctrl、Alt、Shift 请使用上方标签选择，只按目标键。".into(),
             Self::Unknown(value) => format!("无法识别目标键“{value}”，请换一个键。"),
         }
@@ -87,7 +87,7 @@ pub enum ProbeStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EvidenceSource {
     RuntimeProbe,
-    RuntimeProbeWithSystemRule,
+    SystemRule,
     SystemError,
 }
 
@@ -110,7 +110,7 @@ impl SystemRule {
         match self {
             Self::SecureAttention => "Ctrl + Alt + Delete 由 Windows 安全桌面保留",
             Self::LockWorkstation => "Win + L 由 Windows 锁屏功能保留",
-            Self::DebuggerF12 => "F12 始终为调试器保留",
+            Self::DebuggerF12 => "F12 为调试器保留，请换一个键。",
         }
     }
 }
@@ -290,6 +290,16 @@ fn punctuation_key(character: char) -> Option<u32> {
 }
 
 pub fn probe_shortcut(shortcut: &Shortcut) -> ProbeReport {
+    if let Some(rule) = match_system_rule(shortcut) {
+        return ProbeReport {
+            status: ProbeStatus::Blocked,
+            source: EvidenceSource::SystemRule,
+            owner: OwnerAttribution::KnownSystem,
+            code: None,
+            system_rule: Some(rule),
+            detail: None,
+        };
+    }
     let modifiers = HOT_KEY_MODIFIERS(shortcut.modifiers | MOD_NOREPEAT.0);
     let registration = unsafe { RegisterHotKey(None, PROBE_ID, modifiers, shortcut.virtual_key) };
 
@@ -310,21 +320,12 @@ pub fn probe_shortcut(shortcut: &Shortcut) -> ProbeReport {
         Err(_) => {
             let code = unsafe { GetLastError().0 };
             if code == ERROR_HOTKEY_ALREADY_REGISTERED_CODE {
-                let system_rule = match_system_rule(shortcut);
                 ProbeReport {
                     status: ProbeStatus::Blocked,
-                    source: if system_rule.is_some() {
-                        EvidenceSource::RuntimeProbeWithSystemRule
-                    } else {
-                        EvidenceSource::RuntimeProbe
-                    },
-                    owner: if system_rule.is_some() {
-                        OwnerAttribution::KnownSystem
-                    } else {
-                        OwnerAttribution::Unknown
-                    },
+                    source: EvidenceSource::RuntimeProbe,
+                    owner: OwnerAttribution::Unknown,
                     code: Some(code),
-                    system_rule,
+                    system_rule: None,
                     detail: None,
                 }
             } else {
@@ -495,11 +496,36 @@ mod tests {
 
     #[test]
     fn detects_a_real_register_hot_key_conflict() {
+        assert_registration_lifetime(MOD_CONTROL.0 | MOD_SHIFT.0 | MOD_ALT.0);
+    }
+
+    #[test]
+    fn detects_bare_keys_only_while_the_owner_registration_is_active() {
+        assert_registration_lifetime(0);
+        assert_registration_lifetime(MOD_NOREPEAT.0);
+    }
+
+    #[test]
+    fn f12_is_reserved_without_a_registration_probe() {
+        for modifiers in [0, MOD_CONTROL.0 | MOD_SHIFT.0] {
+            let report = probe_shortcut(&Shortcut {
+                modifiers,
+                virtual_key: VK_F1 + 11,
+            });
+            assert_eq!(report.status, ProbeStatus::Blocked);
+            assert_eq!(report.source, EvidenceSource::SystemRule);
+            assert_eq!(report.owner, OwnerAttribution::KnownSystem);
+            assert_eq!(report.system_rule, Some(SystemRule::DebuggerF12));
+            assert_eq!(report.code, None);
+        }
+    }
+
+    fn assert_registration_lifetime(registered_modifiers: u32) {
         let (chosen_sender, chosen_receiver) = mpsc::channel();
         let (release_sender, release_receiver) = mpsc::channel();
 
         let owner = thread::spawn(move || {
-            let modifiers = HOT_KEY_MODIFIERS(MOD_CONTROL.0 | MOD_SHIFT.0 | MOD_ALT.0);
+            let modifiers = HOT_KEY_MODIFIERS(registered_modifiers);
             for virtual_key in (VK_F1 + 12)..=VK_F24 {
                 if unsafe { RegisterHotKey(None, PROBE_ID + 1, modifiers, virtual_key) }.is_ok() {
                     chosen_sender
@@ -522,7 +548,7 @@ mod tests {
             .expect("receive registered test key")
             .expect("at least one F13-F24 test shortcut should be free");
         let shortcut = Shortcut {
-            modifiers: MOD_CONTROL.0 | MOD_SHIFT.0 | MOD_ALT.0,
+            modifiers: registered_modifiers & !MOD_NOREPEAT.0,
             virtual_key,
         };
 

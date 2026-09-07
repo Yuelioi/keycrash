@@ -34,6 +34,11 @@ macro_rules! m {
 
 const MESSAGES: &[Message] = &[
     m!(
+        "系统保留快捷键",
+        "System-reserved shortcut",
+        "システム予約のショートカット"
+    ),
+    m!(
         "没有识别到目标键",
         "Target key not recognized",
         "対象キーを認識できません"
@@ -56,20 +61,20 @@ const MESSAGES: &[Message] = &[
         "ファイルの場所を開けません · 上のパスを手動で開いてください"
     ),
     m!(
-        "这个组合当前可用",
-        "This shortcut is available",
-        "この組み合わせは使用できます"
+        "未发现注册冲突",
+        "No registration conflict",
+        "登録の競合は見つかりません"
     ),
     m!(
-        "Windows 接受了临时注册，KeyCrash 已立即释放它。",
-        "Windows accepted a temporary registration, which KeyCrash immediately released.",
-        "Windows は一時登録を受け入れ、KeyCrash はすぐに解放しました。"
+        "其他软件仍可能监听此键；本次临时注册已释放。",
+        "Other apps may listen; test registration released.",
+        "一時登録は解放済み。他のアプリのキー監視は対象外です。"
     ),
     m!("再测一次", "Check another", "もう一度検出"),
     m!(
-        "已被占用或系统保留",
-        "In use or reserved by the system",
-        "使用中またはシステム予約済み"
+        "已发现注册冲突",
+        "Registration conflict found",
+        "登録の競合が見つかりました"
     ),
     m!("定位占用软件", "Locate the app", "使用中のアプリを特定"),
     m!(
@@ -126,14 +131,14 @@ const MESSAGES: &[Message] = &[
         "詳細検出コンポーネントエラー"
     ),
     m!(
-        "运行时探测 · 可直接注册",
-        "Runtime probe · Registration available",
-        "実行時プローブ · 登録可能"
+        "注册检测 · 不涵盖所有键盘监听",
+        "Registration check · Not all key listeners",
+        "登録を検査 · すべてのキー監視は対象外"
     ),
     m!(
-        "系统规则 + 运行时探测",
-        "System rule + runtime probe",
-        "システムルール + 実行時プローブ"
+        "Windows 系统规则 · 未尝试注册",
+        "Windows rule · Registration not attempted",
+        "Windows の予約 · 登録は未実行"
     ),
     m!(
         "检测证据不可用",
@@ -159,9 +164,9 @@ const MESSAGES: &[Message] = &[
         "対象キーを 1 つ押してください"
     ),
     m!(
-        "只按 A、F12、Space 等目标键；不要再按修饰键。",
-        "Press A, F12, Space, or another target key without modifiers.",
-        "A、F12、Space などの対象キーだけを押してください。"
+        "只按 A、F9、Space 等目标键；不要再按修饰键。",
+        "Press A, F9, Space, or another target key without modifiers.",
+        "A、F9、Space などの対象キーだけを押してください。"
     ),
     m!("取消", "Cancel", "キャンセル"),
     m!("按目标键…", "Press a key…", "対象キーを押す…"),
@@ -182,14 +187,14 @@ const MESSAGES: &[Message] = &[
         "Win + L は Windows のロック機能によって予約されています"
     ),
     m!(
-        "F12 始终为调试器保留",
-        "F12 is always reserved for the debugger",
-        "F12 は常にデバッガー用に予約されています"
+        "F12 为调试器保留，请换一个键。",
+        "F12 is reserved for debuggers. Choose another key.",
+        "F12 はデバッガー用です。別のキーを選んでください。"
     ),
     m!(
-        "请按一个目标键，例如 A、F12 或 Space。",
-        "Press a target key such as A, F12, or Space.",
-        "A、F12、Space などの対象キーを押してください。"
+        "请按一个目标键，例如 A、F9 或 Space。",
+        "Press a target key such as A, F9, or Space.",
+        "A、F9、Space などの対象キーを押してください。"
     ),
     m!(
         "Ctrl、Alt、Shift 请使用上方标签选择，只按目标键。",
