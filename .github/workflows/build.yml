@@ -1,0 +1,51 @@
+name: Windows build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --target i686-pc-windows-msvc
+      - name: Test
+        run: cargo test --locked --release --workspace --target-dir (./scripts/get-target-root.ps1)
+      - name: Build release and verify icon
+        run: ./scripts/build-release.ps1
+      - name: Prepare portable bundle
+        id: bundle
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseRoot = Join-Path (./scripts/get-target-root.ps1) 'release'
+          $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Cargo metadata failed' }
+          $version = ($metadata.packages | Where-Object name -eq 'keycrash').version
+          $bundleRoot = Join-Path $env:RUNNER_TEMP 'keycrash-bundle'
+          New-Item -ItemType Directory -Path (Join-Path $bundleRoot 'owner-x86') -Force | Out-Null
+          foreach ($file in @('keycrash.exe', 'keycrash-owner-probe.exe', 'keycrash_owner_hook.dll', 'owner-x86/keycrash-owner-probe.exe', 'owner-x86/keycrash_owner_hook.dll')) {
+            Copy-Item -LiteralPath (Join-Path $releaseRoot $file) -Destination (Join-Path $bundleRoot $file)
+          }
+          Copy-Item -LiteralPath 'README.md', 'README.en.md', 'README.ja.md' -Destination $bundleRoot
+          "path=$bundleRoot" >> $env:GITHUB_OUTPUT
+          "name=keycrash-v$version-windows-x64" >> $env:GITHUB_OUTPUT
+      - name: Upload portable bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.bundle.outputs.name }}
+          path: ${{ steps.bundle.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14

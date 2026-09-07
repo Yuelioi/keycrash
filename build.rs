@@ -1,13 +1,15 @@
 fn main() {
     println!("cargo:rerun-if-changed=assets/keycrash.manifest");
+    println!("cargo:rerun-if-changed=assets/keycrash-icon.ico");
     slint_build::compile("ui/app-window.slint").expect("failed to compile Slint UI");
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
         && std::env::var("PROFILE").as_deref() == Ok("release")
     {
         winresource::WindowsResource::new()
+            .set_icon("assets/keycrash-icon.ico")
             .set_manifest_file("assets/keycrash.manifest")
             .compile()
-            .expect("failed to embed the KeyCrash UAC manifest");
+            .expect("failed to embed the KeyCrash icon and UAC manifest");
     }
 }

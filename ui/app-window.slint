@@ -7,6 +7,112 @@ FORM: 信号轨迹视觉世界；证据剖面式层级，种子 132c565a。
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 */
 
+component LanguageSelect inherits Rectangle {
+    in property <string> language;
+    in property <bool> enabled: true;
+    in property <string> accessible-name;
+    callback selected(string);
+    property <[string]> labels: ["简体中文", "English", "日本語"];
+    property <[string]> codes: ["zh", "en", "ja"];
+    property <int> current: language == "en" ? 1 : language == "ja" ? 2 : 0;
+    property <int> highlighted;
+    property <bool> keyboard-focus: false;
+    property <bool> expanded: false;
+
+    width: 112px;
+    height: 30px;
+    border-radius: 8px;
+    background: touch.has-hover && enabled ? #edf1f2 : #f8fafb;
+    border-width: 1px;
+    border-color: focus.has-focus && keyboard-focus && enabled ? #536168 : #aab6bc;
+    opacity: enabled ? 1 : 0.42;
+    forward-focus: focus;
+    accessible-role: combobox;
+    accessible-label: accessible-name;
+    accessible-value: labels[current];
+    accessible-enabled: enabled;
+    accessible-expandable: true;
+    accessible-expanded: expanded;
+    accessible-action-expand => { root.open(); }
+
+    function open() {
+        if root.enabled {
+            root.highlighted = root.current;
+            root.expanded = true;
+            menu.show();
+        }
+    }
+
+    Text {
+        x: 10px; width: parent.width - 34px; height: parent.height;
+        text: root.labels[root.current]; color: #344249; font-size: 12px;
+        vertical-alignment: center;
+        accessible-role: none;
+    }
+    Path {
+        x: parent.width - 18px; y: 13px; width: 8px; height: 4px;
+        commands: "M 0 0 L 4 4 L 8 0";
+        stroke: #536168; stroke-width: 1.4px;
+    }
+    focus := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        focus-gained(reason) => { root.keyboard-focus = reason == FocusReason.tab-navigation; }
+        focus-lost => { root.keyboard-focus = false; }
+        key-pressed(event) => {
+            if event.text == Key.Space || event.text == Key.Return || event.text == Key.DownArrow || event.text == Key.UpArrow {
+                root.keyboard-focus = true;
+                root.open();
+                return accept;
+            }
+            return reject;
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.keyboard-focus = false; root.open(); }
+    }
+    menu := PopupWindow {
+        x: 0px; y: root.height + 5px;
+        width: root.width; height: 104px;
+        close-policy: close-on-click-outside;
+        forward-focus: menu-focus;
+        Rectangle {
+            background: #f8fafb;
+            border-radius: 8px;
+            border-width: 1px; border-color: #b8c2c7;
+        }
+        menu-focus := FocusScope {
+            focus-changed-event => { root.expanded = self.has-focus; }
+            key-pressed(event) => {
+                if event.text == Key.DownArrow { root.highlighted = mod(root.highlighted + 1, 3); return accept; }
+                if event.text == Key.UpArrow { root.highlighted = mod(root.highlighted + 2, 3); return accept; }
+                if event.text == Key.Return || event.text == Key.Space {
+                    root.selected(root.codes[root.highlighted]); menu.close(); focus.focus(); root.keyboard-focus = true; return accept;
+                }
+                if event.text == Key.Escape || event.text == Key.Tab { menu.close(); focus.focus(); root.keyboard-focus = true; return accept; }
+                return reject;
+            }
+            for label[index] in root.labels : Rectangle {
+                x: 4px; y: 4px + index * 32px; width: parent.width - 8px; height: 32px;
+                border-radius: 5px;
+                background: row-touch.has-hover || root.highlighted == index ? #e3e9ec : transparent;
+                accessible-role: button;
+                accessible-label: label;
+                accessible-action-default => { root.selected(root.codes[index]); menu.close(); }
+                Text {
+                    x: 8px; height: parent.height; text: label;
+                    font-size: 12px; font-weight: root.current == index ? 650 : 400;
+                    color: #344249; vertical-alignment: center;
+                }
+                row-touch := TouchArea {
+                    clicked => { root.keyboard-focus = false; root.selected(root.codes[index]); menu.close(); }
+                }
+            }
+        }
+    }
+}
+
 component SignalTrace inherits Rectangle {
     in property <color> signal-color;
     in property <bool> active;
@@ -248,7 +354,8 @@ component OutlineButton inherits Rectangle {
 export component AppWindow inherits Window {
     width: 460px;
     height: 380px;
-    title: "KeyCrash";
+    in property <string> app-version;
+    title: "KeyCrash v" + root.app-version;
     icon: @image-url("../assets/keycrash-icon.svg");
     background: #dce2e5;
 
@@ -342,11 +449,21 @@ export component AppWindow inherits Window {
 
                 VerticalLayout {
                     spacing: 1px;
-                    Text {
-                        text: "KeyCrash";
-                        color: #11171c;
-                        font-size: 16px;
-                        font-weight: 700;
+                    HorizontalLayout {
+                        alignment: start;
+                        spacing: 7px;
+                        Text {
+                            text: "KeyCrash";
+                            color: #11171c;
+                            font-size: 16px;
+                            font-weight: 700;
+                        }
+                        Text {
+                            text: "v" + root.app-version;
+                            color: #536168;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                        }
                     }
                     Text {
                         text: root.language == "en" ? "One key to find the conflict" : root.language == "ja" ? "1 キーで競合を検出" : "一按，找到快捷键冲突";
@@ -713,15 +830,17 @@ export component AppWindow inherits Window {
             }
         }
 
-        HorizontalLayout {
-            x: 312px;
+        LanguageSelect {
+            x: 282px;
             y: 26px;
-            width: 82px;
+            width: 112px;
             height: 30px;
-            spacing: 2px;
-            OutlineButton { width: 26px; text: "中"; accessible-name: "中文"; enabled: root.language != "zh" && root.mode != "locating"; clicked => { root.language-changed("zh"); } }
-            OutlineButton { width: 26px; text: "EN"; label-size: 10px; accessible-name: "English"; enabled: root.language != "en" && root.mode != "locating"; clicked => { root.language-changed("en"); } }
-            OutlineButton { width: 26px; text: "日"; accessible-name: "日本語"; enabled: root.language != "ja" && root.mode != "locating"; clicked => { root.language-changed("ja"); } }
+            language: root.language;
+            enabled: root.mode != "locating";
+            accessible-name: root.language == "en" ? "Language" : root.language == "ja" ? "言語" : "语言";
+            selected(value) => {
+                root.language-changed(value);
+            }
         }
 
     }

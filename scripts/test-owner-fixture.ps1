@@ -1,8 +1,12 @@
 param(
-    [string]$ReleaseRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'target\release')
+    [string]$ReleaseRoot
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $ReleaseRoot) {
+    $ReleaseRoot = Join-Path (& (Join-Path $PSScriptRoot 'get-target-root.ps1')) 'release'
+}
 
 $fixturePath = Join-Path $ReleaseRoot 'keycrash-hotkey-fixture.exe'
 $probePath = Join-Path $ReleaseRoot 'keycrash-owner-probe.exe'

@@ -1,11 +1,11 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$releaseRoot = Join-Path $projectRoot 'target\release'
+$targetRoot = & (Join-Path $PSScriptRoot 'get-target-root.ps1')
+$releaseRoot = Join-Path $targetRoot 'release'
 $x86Target = 'i686-pc-windows-msvc'
-$env:CARGO_TARGET_DIR = Join-Path $projectRoot 'target'
 
-cargo build --release --workspace --manifest-path (Join-Path $projectRoot 'Cargo.toml')
+cargo build --locked --release --workspace --target-dir $targetRoot --manifest-path (Join-Path $projectRoot 'Cargo.toml')
 if ($LASTEXITCODE -ne 0) {
     throw "x64 release build failed with exit code $LASTEXITCODE"
 }
@@ -15,7 +15,7 @@ if ($installedTargets -notcontains $x86Target) {
     rustup target add $x86Target
 }
 
-cargo build --release --target $x86Target `
+cargo build --locked --release --target $x86Target --target-dir $targetRoot `
     -p keycrash-owner-hook `
     -p keycrash-owner-probe `
     --manifest-path (Join-Path $projectRoot 'Cargo.toml')
@@ -23,7 +23,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "x86 release build failed with exit code $LASTEXITCODE"
 }
 
-$x86Release = Join-Path $projectRoot "target\$x86Target\release"
+$x86Release = Join-Path $targetRoot "$x86Target\release"
 $x86Bundle = Join-Path $releaseRoot 'owner-x86'
 New-Item -ItemType Directory -Path $x86Bundle -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $x86Release 'keycrash-owner-probe.exe') `
@@ -31,4 +31,5 @@ Copy-Item -LiteralPath (Join-Path $x86Release 'keycrash-owner-probe.exe') `
 Copy-Item -LiteralPath (Join-Path $x86Release 'keycrash_owner_hook.dll') `
     -Destination (Join-Path $x86Bundle 'keycrash_owner_hook.dll') -Force
 
+& (Join-Path $PSScriptRoot 'test-exe-icon.ps1') -ExePath (Join-Path $releaseRoot 'keycrash.exe')
 Write-Output "Release bundle: $releaseRoot"

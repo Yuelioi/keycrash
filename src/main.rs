@@ -33,6 +33,7 @@ const MODE_ERROR: &str = "error";
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
+    ui.set_app_version(env!("CARGO_PKG_VERSION").into());
     let last_blocked_shortcut = Rc::new(RefCell::new(None));
     set_idle(&ui);
 
