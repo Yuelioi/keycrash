@@ -12,7 +12,7 @@ For **Windows 10 / 11 (64-bit)**. No installation needed. Available in Chinese, 
 
 ## Download and run
 
-Open a successful run under **Actions → Windows build** in this repository. Download `keycrash-v<version>-windows-x64` from **Artifacts**. GitHub may ask you to sign in.
+Download `keycrash-v<version>-windows-x64.zip` from [Releases](https://github.com/Yuelioi/keycrash/releases).
 
 Extract the entire archive and run `keycrash.exe`. Keep the other files and the `owner-x86` folder alongside it.
 

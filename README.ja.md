@@ -12,7 +12,7 @@ KeyCrash は、ショートカットの登録競合を確認し、使用中の�
 
 ## ダウンロードと起動
 
-このリポジトリの **Actions → Windows build** で成功した実行を開き、**Artifacts** から `keycrash-v<バージョン>-windows-x64` をダウンロードします。GitHub へのログインが必要な場合があります。
+[Releases](https://github.com/Yuelioi/keycrash/releases) から `keycrash-v<バージョン>-windows-x64.zip` をダウンロードしてください。
 
 すべてのファイルを展開し、`keycrash.exe` を起動してください。同じ場所にあるほかのファイルと `owner-x86` フォルダーも必要です。
 

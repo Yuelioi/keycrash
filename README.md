@@ -12,7 +12,7 @@
 
 ## 下载与运行
 
-在本仓库的 **Actions → Windows build** 中，打开一次成功的构建，从 **Artifacts** 下载 `keycrash-v<版本号>-windows-x64`（下载可能需要登录 GitHub）。
+在 [Releases](https://github.com/Yuelioi/keycrash/releases) 下载 `keycrash-v<版本号>-windows-x64.zip`。
 
 完整解压后运行 `keycrash.exe`。请保留同目录的其他文件和 `owner-x86` 文件夹，不要只复制主程序。
 
