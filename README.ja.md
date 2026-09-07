@@ -8,6 +8,8 @@ KeyCrash は、ショートカットの登録競合を確認し、使用中の�
 
 **Windows 10 / 11（64 ビット）**対応。インストール不要で、日本語・中国語・英語を切り替えられます。
 
+![Ctrl + Alt + A を使用している QQ を特定した画面（中国語 UI）](docs/images/keycrash-screenshot.png)
+
 ## ダウンロードと起動
 
 このリポジトリの **Actions → Windows build** で成功した実行を開き、**Artifacts** から `keycrash-v<バージョン>-windows-x64` をダウンロードします。GitHub へのログインが必要な場合があります。

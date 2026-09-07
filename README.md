@@ -8,6 +8,8 @@
 
 适用于 **Windows 10 / 11（64 位）**，免安装，支持中文、英文和日文。
 
+![KeyCrash 检测到 QQ 占用了 Ctrl + Alt + A](docs/images/keycrash-screenshot.png)
+
 ## 下载与运行
 
 在本仓库的 **Actions → Windows build** 中，打开一次成功的构建，从 **Artifacts** 下载 `keycrash-v<版本号>-windows-x64`（下载可能需要登录 GitHub）。

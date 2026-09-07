@@ -8,6 +8,8 @@ KeyCrash checks for global hotkey registration conflicts and tries to identify t
 
 For **Windows 10 / 11 (64-bit)**. No installation needed. Available in Chinese, English, and Japanese.
 
+![KeyCrash identifies QQ as the app using Ctrl + Alt + A (Chinese interface)](docs/images/keycrash-screenshot.png)
+
 ## Download and run
 
 Open a successful run under **Actions → Windows build** in this repository. Download `keycrash-v<version>-windows-x64` from **Artifacts**. GitHub may ask you to sign in.

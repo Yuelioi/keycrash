@@ -40,6 +40,8 @@ jobs:
             Copy-Item -LiteralPath (Join-Path $releaseRoot $file) -Destination (Join-Path $bundleRoot $file)
           }
           Copy-Item -LiteralPath 'README.md', 'README.en.md', 'README.ja.md' -Destination $bundleRoot
+          New-Item -ItemType Directory -Path (Join-Path $bundleRoot 'docs/images') -Force | Out-Null
+          Copy-Item -LiteralPath 'docs/images/keycrash-screenshot.png' -Destination (Join-Path $bundleRoot 'docs/images')
           "path=$bundleRoot" >> $env:GITHUB_OUTPUT
           "name=keycrash-v$version-windows-x64" >> $env:GITHUB_OUTPUT
       - name: Upload portable bundle
