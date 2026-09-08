@@ -3,6 +3,16 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to publish (for example, v0.1.0)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -19,8 +29,11 @@ jobs:
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
       RUSTUP_TOOLCHAIN: stable
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal --target i686-pc-windows-msvc
       - name: Validate version tag
@@ -29,8 +42,8 @@ jobs:
           $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Cargo metadata failed' }
           $version = ($metadata.packages | Where-Object name -eq 'keycrash').version
-          if ($env:GITHUB_REF_NAME -cne "v$version") {
-            throw "Tag $env:GITHUB_REF_NAME must match Cargo.toml version v$version"
+          if ($env:RELEASE_TAG -cne "v$version") {
+            throw "Tag $env:RELEASE_TAG must match Cargo.toml version v$version"
           }
       - name: Test
         run: cargo test --locked --release --workspace --target-dir (./scripts/get-target-root.ps1)
@@ -61,8 +74,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_ARCHIVE: ${{ steps.bundle.outputs.archive }}
         run: |
-          $releaseArgs = @('release', 'create', $env:GITHUB_REF_NAME, $env:RELEASE_ARCHIVE,
-            '--verify-tag', '--title', "KeyCrash $env:GITHUB_REF_NAME", '--generate-notes')
-          if ($env:GITHUB_REF_NAME.Contains('-')) { $releaseArgs += '--prerelease' }
+          $releaseArgs = @('release', 'create', $env:RELEASE_TAG, $env:RELEASE_ARCHIVE,
+            '--verify-tag', '--title', "KeyCrash $env:RELEASE_TAG", '--generate-notes')
+          if ($env:RELEASE_TAG.Contains('-')) { $releaseArgs += '--prerelease' }
           gh @releaseArgs
           if ($LASTEXITCODE -ne 0) { throw 'GitHub Release publication failed' }
