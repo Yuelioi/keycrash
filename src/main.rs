@@ -13,6 +13,7 @@ use owner_probe::OwnerProbeResult;
 use slint::{Color, ComponentHandle, SharedString};
 use std::cell::RefCell;
 use std::ffi::OsString;
+use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 use std::rc::Rc;
@@ -289,9 +290,9 @@ fn set_locating_owner(ui: &AppWindow, shortcut_label: &str) {
         ui,
         MODE_LOCATING,
         "正在定位占用软件",
-        "先检查普通软件；未命中时再请求管理员权限。",
+        "正在自动检查占用软件；如需更高权限，Windows 会请求一次确认。",
         shortcut_label,
-        "普通 / 管理员 × x64 / x86",
+        "自动深度定位 · x64 / x86",
         "定位中…",
         color("C9342A"),
     );
@@ -488,14 +489,17 @@ fn owner_evidence(architecture: &str, pid: u32, thread_id: u32) -> String {
 }
 
 fn explorer_select_argument(path: &Path) -> OsString {
-    let mut argument = OsString::from("/select,");
+    let mut argument = OsString::from("/select,\"");
     argument.push(path.as_os_str());
+    argument.push("\"");
     argument
 }
 
 fn open_file_location(path: &Path) -> Result<(), String> {
     Command::new("explorer.exe")
-        .arg(explorer_select_argument(path))
+        // Explorer's parser expects /select,"<path>". Command::arg would quote
+        // the whole argument when the path contains spaces such as Program Files.
+        .raw_arg(explorer_select_argument(path))
         .spawn()
         .map(|_| ())
         .map_err(|error| error.to_string())
@@ -582,10 +586,10 @@ mod tests {
     }
 
     #[test]
-    fn explorer_argument_selects_the_owner_executable() {
+    fn explorer_argument_quotes_paths_with_spaces_for_explorer() {
         assert_eq!(
-            explorer_select_argument(Path::new("C:\\Apps\\Snipaste.exe")),
-            OsString::from("/select,C:\\Apps\\Snipaste.exe")
+            explorer_select_argument(Path::new("C:\\Program Files\\Tencent\\QQNT\\QQ.exe")),
+            OsString::from("/select,\"C:\\Program Files\\Tencent\\QQNT\\QQ.exe\"")
         );
     }
 }

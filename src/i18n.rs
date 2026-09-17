@@ -94,14 +94,14 @@ const MESSAGES: &[Message] = &[
         "使用中のアプリを特定中"
     ),
     m!(
-        "先检查普通软件；未命中时再请求管理员权限。",
-        "Checking regular apps first; administrator access is requested only if needed.",
-        "まず通常のアプリを確認し、必要な場合のみ管理者権限を要求します。"
+        "正在自动检查占用软件；如需更高权限，Windows 会请求一次确认。",
+        "Checking automatically. Windows will ask once if higher privileges are needed.",
+        "自動で確認しています。より高い権限が必要な場合は、Windows が一度だけ確認します。"
     ),
     m!(
-        "普通 / 管理员 × x64 / x86",
-        "Standard / admin × x64 / x86",
-        "標準 / 管理者 × x64 / x86"
+        "自动深度定位 · x64 / x86",
+        "Automatic deep scan · x64 / x86",
+        "自動詳細検出 · x64 / x86"
     ),
     m!("定位中…", "Locating…", "特定中…"),
     m!(

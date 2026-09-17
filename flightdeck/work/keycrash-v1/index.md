@@ -37,6 +37,7 @@
 
 ## Recent progress
 
+- 修复 QQ 位于 `C:\Program Files\Tencent\QQNT\QQ.exe` 时“打开文件位置”无法选中的问题：Explorer 使用原始 `/select,"<path>"` 参数，避免 Rust 参数引用破坏其旧式命令行解析；同时保留 GUI `asInvoker`，把普通/管理员覆盖收敛为一次自动定位体验，避免在界面中暴露两轮权限实现细节。
 - 纠正“只判冲突即可”的产品偏差，确认 Hotkey Screener 使用全局消息 Hook + 真实触发来返回响应应用。
 - 用一次性原型验证 `PM_REMOVE + WM_HOTKEY` 可精确记录 PID 并改写为 `WM_NULL`；随后将结论独立重写进正式 x64/x86 Helper/DLL。
 - 双架构受控 fixtures、按需 UAC、异步 UI 归因状态和可复现 release 脚本均已通过验证；当前 release SHA-256 为 `307F4D4E3762CC6D29DB55E397C22BC9E66D6B3CA6E8FC7F2C4F0CD0495D9A40`，等待 UI 收尾、QQ 与 elevated owner 最终实机验收。
