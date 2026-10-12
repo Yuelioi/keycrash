@@ -147,9 +147,9 @@ const MESSAGES: &[Message] = &[
     ),
     m!("选择修饰键", "Choose modifiers", "修飾キーを選択"),
     m!(
-        "单击 Ctrl、Alt、Shift；开始后只按一个目标键。",
-        "Select Ctrl, Alt, or Shift, then press only one target key.",
-        "Ctrl、Alt、Shift を選び、開始後は対象キーを 1 つだけ押します。"
+        "单击 Ctrl、Alt、Shift、Win；开始后只按一个目标键。",
+        "Select Ctrl, Alt, Shift, or Win, then press only one target key.",
+        "Ctrl、Alt、Shift、Win を選び、開始後は対象キーを 1 つだけ押します。"
     ),
     m!("等待目标键", "Waiting for a key", "対象キー待ち"),
     m!(
@@ -197,9 +197,9 @@ const MESSAGES: &[Message] = &[
         "A、F9、Space などの対象キーを押してください。"
     ),
     m!(
-        "Ctrl、Alt、Shift 请使用上方标签选择，只按目标键。",
-        "Choose Ctrl, Alt, and Shift with the tags above; press only the target key.",
-        "Ctrl、Alt、Shift は上のタグで選び、対象キーだけを押してください。"
+        "Ctrl、Alt、Shift、Win 请使用上方标签选择，只按目标键。",
+        "Choose Ctrl, Alt, Shift, and Win with the tags above; press only the target key.",
+        "Ctrl、Alt、Shift、Win は上のタグで選び、対象キーだけを押してください。"
     ),
 ];
 

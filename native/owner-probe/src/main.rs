@@ -18,7 +18,7 @@ use windows_sys::Win32::System::Threading::{
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, MOD_ALT,
-    MOD_CONTROL, MOD_SHIFT, SendInput, VK_CONTROL, VK_MENU, VK_SHIFT,
+    MOD_CONTROL, MOD_SHIFT, MOD_WIN, SendInput, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     HOOKPROC, SetWindowsHookExW, UnhookWindowsHookEx, WH_GETMESSAGE,
@@ -147,7 +147,7 @@ fn run_x86_fallback(modifiers: u32, virtual_key: u32) -> Result<String, String> 
 
 unsafe fn locate_owner(modifiers: u32, virtual_key: u32) -> Result<Option<SharedData>, String> {
     if modifiers_physically_held() {
-        return Err("release Ctrl, Alt, and Shift before locating the owner".into());
+        return Err("release Ctrl, Alt, Shift, and Win before locating the owner".into());
     }
 
     let mapping = unsafe {
@@ -237,13 +237,13 @@ unsafe fn locate_owner(modifiers: u32, virtual_key: u32) -> Result<Option<Shared
 }
 
 fn modifiers_physically_held() -> bool {
-    [VK_CONTROL, VK_MENU, VK_SHIFT]
+    [VK_CONTROL, VK_MENU, VK_SHIFT, VK_LWIN, VK_RWIN]
         .iter()
         .any(|key| unsafe { GetAsyncKeyState(*key as i32) } < 0)
 }
 
 fn send_shortcut(modifiers: u32, virtual_key: u32) -> Result<(), String> {
-    let mut keys = Vec::with_capacity(8);
+    let mut keys = Vec::with_capacity(10);
     if modifiers & MOD_CONTROL != 0 {
         keys.push(key_input(VK_CONTROL, false));
     }
@@ -253,8 +253,14 @@ fn send_shortcut(modifiers: u32, virtual_key: u32) -> Result<(), String> {
     if modifiers & MOD_SHIFT != 0 {
         keys.push(key_input(VK_SHIFT, false));
     }
+    if modifiers & MOD_WIN != 0 {
+        keys.push(key_input(VK_LWIN, false));
+    }
     keys.push(key_input(virtual_key as u16, false));
     keys.push(key_input(virtual_key as u16, true));
+    if modifiers & MOD_WIN != 0 {
+        keys.push(key_input(VK_LWIN, true));
+    }
     if modifiers & MOD_SHIFT != 0 {
         keys.push(key_input(VK_SHIFT, true));
     }

@@ -18,7 +18,7 @@ Extract the entire archive and run `keycrash.exe`. Keep the other files and the 
 
 ## How to use
 
-1. Select **Ctrl / Alt / Shift** as needed. Click again to deselect, or leave all three off.
+1. Select **Ctrl / Alt / Shift / Win** as needed. Click again to deselect, or leave all four off.
 2. Click **Start detection**, then press only the target key inside KeyCrash. To check `Ctrl + Shift + K`, select Ctrl and Shift, then press K.
 3. Read the result. If a registration conflict is found, choose **Locate**. When an app is found, you can open its file location.
 

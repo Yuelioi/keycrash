@@ -53,10 +53,10 @@ fn main() -> Result<(), slint::PlatformError> {
     {
         let weak_ui = ui.as_weak();
         let last_blocked_shortcut = last_blocked_shortcut.clone();
-        ui.on_begin_detection(move |ctrl, alt, shift| {
+        ui.on_begin_detection(move |ctrl, alt, shift, win| {
             if let Some(ui) = weak_ui.upgrade() {
                 *last_blocked_shortcut.borrow_mut() = None;
-                set_waiting_for_key(&ui, ctrl, alt, shift);
+                set_waiting_for_key(&ui, ctrl, alt, shift, win);
             }
         });
     }
@@ -64,12 +64,12 @@ fn main() -> Result<(), slint::PlatformError> {
     {
         let weak_ui = ui.as_weak();
         let last_blocked_shortcut = last_blocked_shortcut.clone();
-        ui.on_action_key_entered(move |action_key, ctrl, alt, shift| {
+        ui.on_action_key_entered(move |action_key, ctrl, alt, shift, win| {
             let Some(ui) = weak_ui.upgrade() else {
                 return;
             };
 
-            let shortcut = match shortcut_from_parts(ctrl, alt, shift, action_key.as_str()) {
+            let shortcut = match shortcut_from_parts(ctrl, alt, shift, win, action_key.as_str()) {
                 Ok(shortcut) => shortcut,
                 Err(error) => {
                     set_view(
@@ -197,6 +197,7 @@ fn install_action_key_fallback(
                     ui.get_ctrl_selected(),
                     ui.get_alt_selected(),
                     ui.get_shift_selected(),
+                    ui.get_win_selected(),
                     virtual_key,
                 );
                 detect_shortcut(&ui, &last_blocked_shortcut, shortcut);
@@ -385,7 +386,7 @@ fn set_idle(ui: &AppWindow) {
         ui,
         MODE_IDLE,
         "选择修饰键",
-        "单击 Ctrl、Alt、Shift；开始后只按一个目标键。",
+        "单击 Ctrl、Alt、Shift、Win；开始后只按一个目标键。",
         "等待目标键",
         "安全输入 · 不发送完整组合",
         "开始检测",
@@ -393,20 +394,20 @@ fn set_idle(ui: &AppWindow) {
     );
 }
 
-fn set_waiting_for_key(ui: &AppWindow, ctrl: bool, alt: bool, shift: bool) {
+fn set_waiting_for_key(ui: &AppWindow, ctrl: bool, alt: bool, shift: bool, win: bool) {
     set_view(
         ui,
         MODE_WAITING_KEY,
         "请按一个目标键",
         "只按 A、F9、Space 等目标键；不要再按修饰键。",
-        &modifier_preview(ctrl, alt, shift),
+        &modifier_preview(ctrl, alt, shift, win),
         "",
         "取消",
         color("C9342A"),
     );
 }
 
-fn modifier_preview(ctrl: bool, alt: bool, shift: bool) -> String {
+fn modifier_preview(ctrl: bool, alt: bool, shift: bool, win: bool) -> String {
     let mut parts = Vec::new();
     if ctrl {
         parts.push("Ctrl");
@@ -416,6 +417,9 @@ fn modifier_preview(ctrl: bool, alt: bool, shift: bool) -> String {
     }
     if shift {
         parts.push("Shift");
+    }
+    if win {
+        parts.push("Win");
     }
     if parts.is_empty() {
         "按目标键…".into()
@@ -521,8 +525,12 @@ mod tests {
 
     #[test]
     fn modifier_preview_uses_the_same_order_as_shortcut_labels() {
-        assert_eq!(modifier_preview(true, true, true), "Ctrl + Alt + Shift + …");
-        assert_eq!(modifier_preview(false, false, false), "按目标键…");
+        assert_eq!(
+            modifier_preview(true, true, true, true),
+            "Ctrl + Alt + Shift + Win + …"
+        );
+        assert_eq!(modifier_preview(false, false, false, true), "Win + …");
+        assert_eq!(modifier_preview(false, false, false, false), "按目标键…");
     }
 
     #[test]

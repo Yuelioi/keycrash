@@ -12,7 +12,7 @@ KeyCrash 面向遇到全局快捷键失效、被占用或无法注册问题的 W
 
 ## Product Purpose
 
-用户单击选择 Ctrl、Alt、Shift 修饰键，点击“开始检测”，再在 KeyCrash 当前窗口内只按一个目标键；KeyCrash 先安全判断组合是否可注册，若已占用，再让用户一键定位接收该全局热键的软件。用户无需浏览全量热键表。
+用户单击选择 Ctrl、Alt、Shift、Win 修饰键，点击“开始检测”，再在 KeyCrash 当前窗口内只按一个目标键；KeyCrash 先安全判断组合是否可注册，若已占用，再让用户一键定位接收该全局热键的软件。用户无需浏览全量热键表。
 
 ## Positioning
 

@@ -4,3 +4,7 @@
 /.vscode/
 *.pdb
 /.impeccable/screenshots/
+
+# Local Flightdeck work records
+/flightdeck/
+/.task/

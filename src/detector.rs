@@ -71,7 +71,9 @@ impl ActionKeyParseError {
     pub fn message(&self) -> String {
         match self {
             Self::Empty => "请按一个目标键，例如 A、F9 或 Space。".into(),
-            Self::ModifierInInput => "Ctrl、Alt、Shift 请使用上方标签选择，只按目标键。".into(),
+            Self::ModifierInInput => {
+                "Ctrl、Alt、Shift、Win 请使用上方标签选择，只按目标键。".into()
+            }
             Self::Unknown(value) => format!("无法识别目标键“{value}”，请换一个键。"),
         }
     }
@@ -129,17 +131,25 @@ pub fn shortcut_from_parts(
     ctrl: bool,
     alt: bool,
     shift: bool,
+    win: bool,
     action_key: &str,
 ) -> Result<Shortcut, ActionKeyParseError> {
     Ok(shortcut_from_virtual_key(
         ctrl,
         alt,
         shift,
+        win,
         parse_action_key(action_key)?,
     ))
 }
 
-pub fn shortcut_from_virtual_key(ctrl: bool, alt: bool, shift: bool, virtual_key: u32) -> Shortcut {
+pub fn shortcut_from_virtual_key(
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+    win: bool,
+    virtual_key: u32,
+) -> Shortcut {
     let mut modifiers = 0;
     if ctrl {
         modifiers |= MOD_CONTROL.0;
@@ -149,6 +159,9 @@ pub fn shortcut_from_virtual_key(ctrl: bool, alt: bool, shift: bool, virtual_key
     }
     if alt {
         modifiers |= MOD_ALT.0;
+    }
+    if win {
+        modifiers |= MOD_WIN.0;
     }
 
     Shortcut {
@@ -466,11 +479,30 @@ mod tests {
 
     #[test]
     fn builds_a_shortcut_from_virtual_modifier_tags() {
-        let shortcut = shortcut_from_parts(true, true, false, "a").expect("build shortcut");
+        let shortcut = shortcut_from_parts(true, true, false, false, "a").expect("build shortcut");
         assert_eq!(shortcut.label(), "Ctrl + Alt + A");
 
-        let all = shortcut_from_parts(true, true, true, "F2").expect("build all modifiers");
-        assert_eq!(all.label(), "Ctrl + Alt + Shift + F2");
+        let all = shortcut_from_parts(true, true, true, true, "F2").expect("build all modifiers");
+        assert_eq!(all.label(), "Ctrl + Alt + Shift + Win + F2");
+    }
+
+    #[test]
+    fn win_tags_reach_the_probe_and_reserved_rule() {
+        let shortcut = shortcut_from_parts(false, false, false, true, "L").unwrap();
+        assert_eq!(shortcut.label(), "Win + L");
+        let report = probe_shortcut(&shortcut);
+        assert_eq!(report.system_rule, Some(SystemRule::LockWorkstation));
+        assert_eq!(report.source, EvidenceSource::SystemRule);
+        assert_eq!(report.status, ProbeStatus::Blocked);
+        assert_eq!(report.code, None);
+
+        let polled = shortcut_from_virtual_key(false, false, false, true, 0x4C);
+        assert_eq!(polled, shortcut);
+    }
+
+    #[test]
+    fn detects_win_registration_lifetime() {
+        assert_registration_lifetime(MOD_WIN.0 | MOD_CONTROL.0);
     }
 
     #[test]

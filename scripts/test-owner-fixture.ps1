@@ -22,13 +22,15 @@ function Invoke-OwnerFixture {
         [uint32]$RegisteredModifiers,
         [uint32]$ExpectedModifiers,
         [uint32]$VirtualKey,
-        [string]$Name
+        [string]$Name,
+        [uint32]$PostDelayMs = 500
     )
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $fixturePath
     $startInfo.ArgumentList.Add($RegisteredModifiers.ToString())
     $startInfo.ArgumentList.Add($VirtualKey.ToString())
+    $startInfo.ArgumentList.Add($PostDelayMs.ToString())
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
@@ -86,7 +88,10 @@ function Invoke-OwnerFixture {
     }
 }
 
-# F13-F15 avoid user-configured shortcuts while preserving the modifier shapes.
+# Uncommon function keys reduce collisions while preserving the modifier shapes.
 Invoke-OwnerFixture -RegisteredModifiers 2 -ExpectedModifiers 2 -VirtualKey 124 -Name 'ctrl-key'
 Invoke-OwnerFixture -RegisteredModifiers 0 -ExpectedModifiers 0 -VirtualKey 125 -Name 'bare-key'
 Invoke-OwnerFixture -RegisteredModifiers 0x4000 -ExpectedModifiers 0 -VirtualKey 126 -Name 'bare-key-norepeat'
+# Delay the synthetic message beyond the probe timeout so these cases require SendInput.
+Invoke-OwnerFixture -RegisteredModifiers 8 -ExpectedModifiers 8 -VirtualKey 124 -Name 'win-key' -PostDelayMs 10000
+Invoke-OwnerFixture -RegisteredModifiers 15 -ExpectedModifiers 15 -VirtualKey 124 -Name 'all-modifiers' -PostDelayMs 10000

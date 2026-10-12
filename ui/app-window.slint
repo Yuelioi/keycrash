@@ -361,7 +361,7 @@ export component AppWindow inherits Window {
 
     in-out property <string> mode: "idle";
     in-out property <string> state-title: "选择修饰键";
-    in-out property <string> state-detail: "单击 Ctrl、Alt、Shift；开始后只按一个目标键。";
+    in-out property <string> state-detail: "单击 Ctrl、Alt、Shift、Win；开始后只按一个目标键。";
     in-out property <string> shortcut-text: "等待目标键";
     in-out property <string> evidence-text: "安全输入 · 不发送完整组合";
     in-out property <string> action-text: "开始检测";
@@ -369,13 +369,14 @@ export component AppWindow inherits Window {
     in-out property <bool> ctrl-selected: false;
     in-out property <bool> alt-selected: false;
     in-out property <bool> shift-selected: false;
+    in-out property <bool> win-selected: false;
     in-out property <bool> action-enabled: true;
     in-out property <string> owner-path: "";
     in-out property <string> language: "zh";
     property <bool> help-visible: false;
 
-    callback begin-detection(bool, bool, bool);
-    callback action-key-entered(string, bool, bool, bool);
+    callback begin-detection(bool, bool, bool, bool);
+    callback action-key-entered(string, bool, bool, bool, bool);
     callback cancel-requested();
     callback modifiers-changed();
     callback locate-owner();
@@ -403,7 +404,7 @@ export component AppWindow inherits Window {
                 if (event.modifiers.control || event.modifiers.alt || event.modifiers.shift || event.modifiers.meta) {
                     return accept;
                 }
-                root.action-key-entered(event.text, root.ctrl-selected, root.alt-selected, root.shift-selected);
+                root.action-key-entered(event.text, root.ctrl-selected, root.alt-selected, root.shift-selected, root.win-selected);
                 return accept;
             }
         }
@@ -526,7 +527,7 @@ export component AppWindow inherits Window {
             HorizontalLayout {
                 x: 18px;
                 y: 17px;
-                width: 190px;
+                width: parent.width - 36px;
                 height: 30px;
                 spacing: 7px;
                 alignment: start;
@@ -564,6 +565,17 @@ export component AppWindow inherits Window {
                         root.modifiers-changed();
                     }
                 }
+                ModifierTag {
+                    text: "Win";
+                    add-label: root.language == "en" ? "Add " : root.language == "ja" ? "追加 " : "添加 ";
+                    remove-label: root.language == "en" ? "Remove " : root.language == "ja" ? "削除 " : "移除 ";
+                    selected: root.win-selected;
+                    enabled: root.mode != "waiting-key" && root.mode != "locating";
+                    toggled => {
+                        root.win-selected = !root.win-selected;
+                        root.modifiers-changed();
+                    }
+                }
             }
 
             Text {
@@ -573,10 +585,10 @@ export component AppWindow inherits Window {
                 height: 38px;
                 visible: root.mode != "waiting-key" && root.mode != "locating";
                 text: root.language == "en"
-                    ? (root.ctrl-selected || root.alt-selected || root.shift-selected ? "Click a selected tag to remove it" : "Add the modifiers you need")
+                    ? (root.ctrl-selected || root.alt-selected || root.shift-selected || root.win-selected ? "Click a selected tag to remove it" : "Add the modifiers you need")
                     : root.language == "ja"
-                        ? (root.ctrl-selected || root.alt-selected || root.shift-selected ? "選択済みのタグをクリックして削除" : "必要な修飾キーを追加")
-                        : (root.ctrl-selected || root.alt-selected || root.shift-selected ? "已选 tag 可再次单击移除" : "单击添加需要的修饰键");
+                        ? (root.ctrl-selected || root.alt-selected || root.shift-selected || root.win-selected ? "選択済みのタグをクリックして削除" : "必要な修飾キーを追加")
+                        : (root.ctrl-selected || root.alt-selected || root.shift-selected || root.win-selected ? "已选 tag 可再次单击移除" : "单击添加需要的修饰键");
                 color: #5e6c72;
                 font-size: 11px;
                 wrap: word-wrap;
@@ -593,21 +605,26 @@ export component AppWindow inherits Window {
 
             Rectangle {
                 x: 218px;
-                y: 32px;
+                y: 58px;
                 width: parent.width - 242px;
-                height: 62px;
+                height: 44px;
                 background: #f8fafb;
                 border-width: 1px;
                 border-color: root.accent;
                 border-radius: 10px;
 
                 Text {
+                    x: 6px;
+                    y: 4px;
+                    width: parent.width - 12px;
+                    height: parent.height - 8px;
                     text: root.shortcut-text;
                     color: #11171c;
-                    font-size: 15px;
+                    font-size: 13px;
                     font-weight: 650;
                     horizontal-alignment: center;
                     vertical-alignment: center;
+                    wrap: word-wrap;
                     overflow: elide;
                 }
             }
@@ -689,7 +706,7 @@ export component AppWindow inherits Window {
                     } else if (root.mode == "occupied") {
                         root.locate-owner();
                     } else {
-                        root.begin-detection(root.ctrl-selected, root.alt-selected, root.shift-selected);
+                        root.begin-detection(root.ctrl-selected, root.alt-selected, root.shift-selected, root.win-selected);
                         capture-focus.focus();
                     }
                 }
@@ -749,7 +766,7 @@ export component AppWindow inherits Window {
                     y: 78px;
                     width: parent.width - 58px;
                     height: 32px;
-                    text: root.language == "en" ? "Select Ctrl, Alt, or Shift. Start directly if none is needed." : root.language == "ja" ? "Ctrl、Alt、Shift を選択。不要な場合はそのまま開始します。" : "点选 Ctrl、Alt、Shift；不需要修饰键时可直接开始。";
+                    text: root.language == "en" ? "Select Ctrl, Alt, Shift, or Win. Start directly if none is needed." : root.language == "ja" ? "Ctrl、Alt、Shift、Win を選択。不要な場合はそのまま開始します。" : "点选 Ctrl、Alt、Shift、Win；不需要修饰键时可直接开始。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;
