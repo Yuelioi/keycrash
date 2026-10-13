@@ -163,7 +163,8 @@ static int query(pid_t pid, uintptr_t identifier) {
     return 0;
 }
 
-static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *budget) {
+static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *budget,
+                      AXUIElementRef parentElement) {
     if (depth > 12 || --*budget < 0) return false;
     CFTypeRef role = NULL, title = NULL, value = NULL, children = NULL;
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute, &role);
@@ -177,7 +178,9 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
     if ([press hasPrefix:@"KeyCrash Permission Test"] && value &&
         CFGetTypeID(value) == CFStringGetTypeID() && CFEqual(value, (__bridge CFStringRef)press)) {
         CFTypeRef parent = NULL, siblings = NULL;
-        AXUIElementCopyAttributeValue(element, kAXParentAttribute, &parent);
+        // Settings can expose virtual rows whose children have no AXParent.
+        // Keep the parent from traversal instead of querying it back.
+        if (parentElement) parent = CFRetain(parentElement);
         if (parent) AXUIElementCopyAttributeValue((AXUIElementRef)parent, kAXChildrenAttribute, &siblings);
         for (id sibling in siblings ? (__bridge NSArray *)siblings : @[]) {
             CFTypeRef siblingRole = NULL;
@@ -208,7 +211,7 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
     AXUIElementCopyAttributeValue(element, kAXChildrenAttribute, &children);
     if (!clicked && children && CFGetTypeID(children) == CFArrayGetTypeID()) {
         for (id child in (__bridge NSArray *)children) {
-            if (inspectUI((__bridge AXUIElementRef)child, press, depth + 1, budget) && press) {
+            if (inspectUI((__bridge AXUIElementRef)child, press, depth + 1, budget, element) && press) {
                 clicked = true;
                 break;
             }
@@ -255,7 +258,7 @@ int main(int argc, const char *argv[]) {
             if (![app.bundleIdentifier isEqualToString:@"com.apple.systempreferences"]) return 65;
             AXUIElementRef root = AXUIElementCreateApplication(pid);
             int budget = 600;
-            bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget);
+            bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget, NULL);
             CFRelease(root);
             return argc == 4 && !clicked ? 1 : 0;
         }
@@ -289,7 +292,7 @@ int main(int argc, const char *argv[]) {
             AXUIElementSetAttributeValue(root, CFSTR("AXEnhancedUserInterface"), kCFBooleanTrue);
             usleep(200000);
             int budget = 300;
-            bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget);
+            bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget, NULL);
             CFRelease(root);
             return argc == 4 && !clicked ? 1 : 0;
         }
