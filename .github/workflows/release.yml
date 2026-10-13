@@ -102,7 +102,7 @@ jobs:
           assert actual == expected, (expected, actual)
           assert all(p.stat().st_size > 0 for p in Path("dist").iterdir())
           PY
-      - name: Publish GitHub Release
+      - name: Prepare draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -115,6 +115,6 @@ jobs:
           - Mac 首版不定位占用软件；注册成功不能排除应用内快捷键或其他监听。
           - Windows 包保持现有检测与软件定位能力。
           EOF
-          args=(release create "$RELEASE_TAG" dist/*.zip --verify-tag --title "KeyCrash $RELEASE_TAG" --generate-notes --notes-file release-notes.md)
+          args=(release create "$RELEASE_TAG" dist/*.zip --draft --verify-tag --title "KeyCrash $RELEASE_TAG" --generate-notes --notes-file release-notes.md)
           if [[ "$RELEASE_TAG" == *-* ]]; then args+=(--prerelease); fi
           gh "${args[@]}"

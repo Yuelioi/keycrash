@@ -8,7 +8,7 @@ KeyCrash は、ショートカットの登録競合を確認し、使用中の�
 
 **Windows 10 / 11（64 ビット）**対応。インストール不要で、日本語・中国語・英語を切り替えられます。
 
-macOS プレビュー版は Apple Silicon（`macos-arm64`）と Intel（`macos-x86_64`）向けです。ZIP を展開し、`KeyCrash.app` を開いてください。ad-hoc 署名のみで Apple 公証はなく、実機検証は未完了です。[macOS のビルド・検証ガイド](docs/MACOS.md)（中国語）をご覧ください。Mac 版はシステム設定と登録競合を検査し、使用中のアプリの特定には対応していません。
+**v0.2.0 は公開を取り下げました。** macOS で使用中のアプリを特定する機能が未完成のためです。現在の公開版は [Windows 向け v0.1.2](https://github.com/Yuelioi/keycrash/releases/tag/v0.1.2) です。macOS 版は開発中で、アプリ特定機能と実機検証の完了後に公開します。[macOS 開発ガイド](docs/MACOS.md)（中国語）をご覧ください。
 
 ![Ctrl + Alt + A を使用している QQ を特定した画面（中国語 UI）](docs/images/keycrash-screenshot.png)
 
