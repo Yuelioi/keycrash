@@ -26,7 +26,6 @@ unsafe extern "C" {}
 
 #[link(name = "CoreGraphics", kind = "framework")]
 unsafe extern "C" {
-    fn CGPreflightPostEventAccess() -> bool;
     fn CGRequestPostEventAccess() -> bool;
     fn CGEventTapCreate(
         location: u32,
@@ -43,6 +42,10 @@ unsafe extern "C" {
     fn CGEventCreateKeyboardEvent(source: Ref, key: u16, down: bool) -> Ref;
     fn CGEventSetFlags(event: Ref, flags: u64);
     fn CGEventPost(location: u32, event: Ref);
+}
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    fn AXIsProcessTrusted() -> bool;
 }
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
@@ -75,7 +78,10 @@ pub enum OwnerProbeResult {
 }
 
 pub fn has_permission() -> bool {
-    unsafe { CGPreflightPostEventAccess() }
+    // CGPreflightPostEventAccess caches an initial denial on macOS 15.5 even
+    // after the user grants Accessibility. AX reflects the live grant; the
+    // short-lived event tap below still verifies access before any input.
+    unsafe { AXIsProcessTrusted() }
 }
 // Call on the UI thread. Requesting permission never sends a shortcut.
 pub fn request_permission() {

@@ -8,7 +8,7 @@ KeyCrash checks for global hotkey registration conflicts and tries to identify t
 
 For **Windows 10 / 11 (64-bit) and macOS**. Available in Chinese, English, and Japanese.
 
-v0.2.0 was withdrawn. v0.2.1 adds Mac app attribution for exclusive and shared hotkeys. See the [macOS guide](docs/MACOS.md) (Chinese) for scope and validation.
+v0.2.0 was withdrawn. v0.2.2 lets Mac shortcuts enabled in system settings continue to app attribution and fixes retrying after the first permission grant without restarting. See the [macOS guide](docs/MACOS.md) (Chinese) for scope and validation.
 
 ![KeyCrash identifies QQ as the app using Ctrl + Alt + A (Chinese interface)](docs/images/keycrash-screenshot.png)
 

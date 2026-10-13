@@ -108,11 +108,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cat > release-notes.md <<'EOF'
-          补齐 macOS 占用软件定位：支持独占与共享热键，显示实际接收软件、PID 和路径。v0.2.0 已撤回，请使用此修复版本。
+          修复 Mac 定位的两条失败路径：系统设置中启用的组合仍可继续定位实际软件；首次授予辅助功能权限后，可在原窗口直接重试，无需退出重开。
 
           - Mac mini M4 / M 系列请下载 `macos-arm64`；Intel Mac 请下载 `macos-x86_64`。
           - Mac 应用采用 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。
           - Mac 定位需要辅助功能权限，会真实触发一次组合；普通检测不需要此权限。临时可注册时也能继续定位共享热键。
+          - 已在 Mac mini M4 / macOS 15.5 验证 QQ 的 `⇧⌘F`，显示 QQ 的 PID 和路径，并验证首次授权后同一进程完成定位。
           - 没有匹配热键事件时不猜测占用者；应用内快捷键或任意监听不在检测范围。
           - Windows 包保持现有检测与软件定位能力。
           EOF

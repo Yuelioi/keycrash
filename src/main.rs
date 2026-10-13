@@ -339,7 +339,7 @@ fn detect_shortcut(
     let report = detector::probe_shortcut(&shortcut);
     if (report.status == ProbeStatus::Blocked
         || (cfg!(target_os = "macos") && report.status == ProbeStatus::Available))
-        && report.system_rule.is_none()
+        && (cfg!(target_os = "macos") || report.system_rule.is_none())
     {
         *last_blocked_shortcut.borrow_mut() = Some(shortcut.clone());
     } else {
@@ -381,7 +381,9 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
             set_view(
                 ui,
                 mode,
-                if report.system_rule.is_some() {
+                if cfg!(target_os = "macos") && report.system_rule.is_some() {
+                    "系统设置中有此组合"
+                } else if report.system_rule.is_some() {
                     "系统保留快捷键"
                 } else {
                     "已发现注册冲突"
@@ -389,7 +391,7 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
                 blocked_detail(&report),
                 shortcut_label,
                 &evidence_label(&report),
-                if report.system_rule.is_some() {
+                if !cfg!(target_os = "macos") && report.system_rule.is_some() {
                     "再测一次"
                 } else {
                     "定位占用软件"
@@ -600,8 +602,7 @@ fn evidence_label(report: &ProbeReport) -> String {
             let code = report.code.unwrap_or_default();
             format!("运行时探测 · 错误 {code} · owner 未知")
         }
-        (EvidenceSource::SystemRule, OwnerAttribution::KnownSystem) => if cfg!(target_os = "macos")
-        {
+        (EvidenceSource::SystemRule, _) => if cfg!(target_os = "macos") {
             "macOS 系统快捷键 · 未尝试注册"
         } else {
             "Windows 系统规则 · 未尝试注册"
@@ -618,6 +619,7 @@ fn evidence_label(report: &ProbeReport) -> String {
                 }
             )
         }
+        #[cfg(windows)]
         _ => "检测证据不可用".into(),
     }
 }

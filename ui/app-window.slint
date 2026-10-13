@@ -642,7 +642,7 @@ export component AppWindow inherits Window {
                 alignment: space-between;
 
                 Text {
-                    text: root.mode == "available" ? (root.is-macos ? "REGISTERED" : "NO CONFLICT") : root.mode == "owner-found" ? "OWNER" : root.mode == "occupied" ? "BLOCKED" : root.mode == "reserved" ? "RESERVED" : root.mode == "locating" ? "LOCATING" : root.mode == "waiting-key" ? "LOCAL INPUT" : root.mode == "error" ? "ERROR" : "STANDBY";
+                    text: root.mode == "available" ? (root.is-macos ? "CHECKED" : "NO CONFLICT") : root.mode == "owner-found" ? "OWNER" : root.mode == "occupied" ? "BLOCKED" : root.mode == "reserved" ? (root.is-macos ? "SYSTEM SETTING" : "RESERVED") : root.mode == "locating" ? "LOCATING" : root.mode == "waiting-key" ? "LOCAL INPUT" : root.mode == "error" ? "ERROR" : "STANDBY";
                     color: root.accent;
                     font-size: 10px;
                     font-weight: 700;
@@ -708,7 +708,7 @@ export component AppWindow inherits Window {
                 clicked => {
                     if (root.mode == "waiting-key" || (root.mode == "locating" && root.is-macos)) {
                         root.cancel-requested();
-                    } else if (root.mode == "occupied" || (root.mode == "available" && root.is-macos)) {
+                    } else if (root.mode == "occupied" || (root.is-macos && (root.mode == "available" || root.mode == "reserved"))) {
                         root.locate-owner();
                     } else {
                         root.begin-detection(root.ctrl-selected, root.alt-selected, root.shift-selected, root.win-selected);

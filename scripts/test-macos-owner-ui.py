@@ -23,6 +23,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', type=Path, required=True)
     parser.add_argument('--trigger-fixture', action='store_true', required=True)
+    parser.add_argument('--qq-shortcut', action='store_true',
+                        help='Exercise the user-configured Shift+Command+F and require QQ attribution')
     args = parser.parse_args()
     app = args.app.resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix='ui-', dir=app.parent) as temp:
@@ -58,6 +60,18 @@ def main():
 
         try:
             wait_text('选择修饰键')
+            if args.qq_shortcut:
+                for label in ('添加 ⇧ Shift', '添加 ⌘ Cmd'):
+                    press(label)
+                press('开始检测')
+                invoke('ui-key', 3)
+                records = invoke('ui-tree')
+                assert any(r.get('title') == '定位占用软件' for r in records), records
+                press('定位占用软件')
+                records = wait_text('QQ占用了它')
+                assert any('/QQ.app/' in r.get('value', '') for r in records), records
+                print('PASS: actual QQ Shift+Command+F owner and executable path', flush=True)
+                return
             for label in ('添加 ⌃ Ctrl', '添加 ⌥ Opt', '添加 ⇧ Shift', '添加 ⌘ Cmd'):
                 press(label)
             owner = gui.AppProcess(app, work, 'owner', 'hold', 79, hold=True)

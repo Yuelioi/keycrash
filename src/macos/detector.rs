@@ -38,7 +38,8 @@ pub fn probe_shortcut(shortcut: &Shortcut) -> ProbeReport {
             return ProbeReport {
                 status: ProbeStatus::Blocked,
                 source: EvidenceSource::SystemRule,
-                owner: OwnerAttribution::KnownSystem,
+                // A settings entry does not exclude a third-party receiver.
+                owner: OwnerAttribution::Unknown,
                 code: None,
                 system_rule: Some(SystemRule::MacSymbolicHotKey),
                 detail: None,

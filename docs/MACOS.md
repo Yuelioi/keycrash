@@ -35,8 +35,9 @@ Mac 只构建主包（`-p keycrash`，也是默认 workspace member）。`native
 - 随后在主线程短时调用 `RegisterEventHotKey`，采用 `kEventHotKeyExclusive`，立即 `UnregisterEventHotKey`。不会发送完整组合或安装全局事件监听器；释放失败不会显示成功。
 - `eventHotKeyExistsErr`（-9878）显示注册冲突且占用者未知；其他 OSStatus 显示检测未完成，保留有符号错误码。macOS 15.0/15.1 的 Option / Shift 限制等不能归类成占用。
 - 成功只显示“此组合可临时注册”。共享 Carbon 注册、事件监听、应用菜单、驱动及未列出的系统行为不能靠这一结果排除。Apple SDK 对已有非独占注册的描述存在差异，因此实机 fixture 分别记录独占和共享注册者的结果。
-- “已发现注册冲突”和“此组合可临时注册”都可以继续点击“定位占用软件”。macOS 15.5 实测：已有共享注册时，独占临时注册仍可成功，因此不能仅在注册失败时提供定位入口。
+- “已发现注册冲突”“此组合可临时注册”和“系统设置中有此组合”都可以继续点击“定位占用软件”。系统设置条目不证明实际接收者是系统，也不排除第三方注册。macOS 15.5 实测：已有共享注册时，独占临时注册仍可成功，因此不能仅在注册失败时提供定位入口。
 - 定位单独申请辅助功能权限；普通检测不申请。授权后主动发送一次目标组合，原动作可能执行。使用短时只读 annotated-session event tap，仅接受携带本次唯一标记的 system-defined hotkey-down（subtype 6）事件，再读取接收 PID 和可执行文件路径；不把前台窗口、普通 keyDown 目标或所有监听器当成占用者。多个接收进程分别展示。
+- 首次授权后返回原窗口点击定位即可。权限检查使用 `AXIsProcessTrusted`；macOS 15.5 的 `CGPreflightPostEventAccess` 会缓存首次拒绝，即使辅助功能已授权仍可能返回 false。发送前仍检查 event tap 创建是否成功。新增实机回归验证同一 PID 从未授权到定位 QQ，不以已授权 Diagnostics 子程序替代首次授权验收。
 - 观察在约一秒后结束，也可取消。按下后始终发送释放，并清除模拟修饰键状态；回调、run-loop source 和 event tap 在退出时释放。没有匹配事件时显示“没有观察到占用软件”，不推断组合空闲；目标可能忽略模拟输入。未使用进程注入、调试权限、私有 hotkey 查询或持续录键。
 - 音量、亮度、媒体、Fn/Globe 单键等系统事件不属于普通 keyDown 检测范围。需要测试 F 键时，按键盘设置使用 Fn+F 键；Esc 用于取消。
 
@@ -60,7 +61,7 @@ fixture 为独立进程，自动选择一个空闲的四修饰键 + F13–F20 �
 4. 切换英语、非美式布局或中文输入法；字符标签和实际物理按键应一致，死键不能误映射为其他按键。
 5. 长按不重复检测，修饰键不算目标键，Esc 取消；切换到其他应用时不捕获输入。Return/Space 不应在完成检测后立即触发下一次操作。
 6. 在系统设置启用、禁用或修改一个系统快捷键，确认结果随设置变化；用上述 fixture 检查跨进程注册和释放。
-7. 未授予辅助功能权限时，普通检测仍可用，不自动弹权限请求。主动点定位才申请辅助功能；授权前不发送组合，授权后回到应用再次定位。
+7. 未授予辅助功能权限时，普通检测仍可用，不自动弹权限请求。主动点定位才申请辅助功能；授权前不发送组合，授权后回到同一进程再次定位，不能靠重启通过验收。
 8. 分别验证独占和共享注册者、两个不同组合、连续定位、未注册阴性对照、退出后不再命中、取消及真实 `⌃⌥A`。不能把“编译通过”当作归因验收。
 
 ## 定位验收工具
@@ -72,7 +73,10 @@ SSH 子进程和 Launch Services 启动的应用可能有不同的 TCC 归属。
 ```sh
 cargo build --locked -p keycrash --example macos-owner-production
 python3 scripts/test-macos-owner-production.py --app '/path/to/KeyCrash Diagnostics.app' --trigger-fixture
+python3 scripts/test-macos-owner-ui.py --app '/path/to/KeyCrash Diagnostics.app' --trigger-fixture --qq-shortcut
 ```
+
+`--qq-shortcut` 实际触发用户配置的 `⇧⌘F`，要求窗口显示 QQ 及其路径。首次授权另用 `scripts/test-macos-permission-ui.py --app '/path/to/KeyCrash Permission Test <unique>.app' --diagnostics '/path/to/KeyCrash Diagnostics.app'`：测试应用须使用当前产品二进制、独立的新 bundle ID、匹配文件名的 CFBundleName，并完成 ad-hoc 签名。脚本通过 Launch Services 单独启动它，在正常系统设置界面开启该测试应用的开关，要求原 PID 从权限提示进入 QQ 定位结果；已授权或重签后残留的旧身份不算首次授权。不要重签固定 Diagnostics，也不要在 CI 绕过 TCC。用完撤销并移除本任务测试身份及临时应用。
 
 原生辅助程序和权限请求只用于开发验收，不打包进用户版本。公开版本由主程序直接完成定位，用户应授权 `KeyCrash` 本身。在 GitHub 托管 runner 上编译夹具，不自动绕过桌面授权。
 

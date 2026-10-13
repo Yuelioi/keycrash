@@ -174,6 +174,32 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
         @"title": title ? [(__bridge id)title description] : @"",
         @"value": value ? [(__bridge id)value description] : @"", @"depth": @(depth)});
     bool clicked = false;
+    if ([press hasPrefix:@"KeyCrash Permission Test"] && value &&
+        CFGetTypeID(value) == CFStringGetTypeID() && CFEqual(value, (__bridge CFStringRef)press)) {
+        CFTypeRef parent = NULL, siblings = NULL;
+        AXUIElementCopyAttributeValue(element, kAXParentAttribute, &parent);
+        if (parent) AXUIElementCopyAttributeValue((AXUIElementRef)parent, kAXChildrenAttribute, &siblings);
+        for (id sibling in siblings ? (__bridge NSArray *)siblings : @[]) {
+            CFTypeRef siblingRole = NULL;
+            AXUIElementCopyAttributeValue((__bridge AXUIElementRef)sibling, kAXRoleAttribute, &siblingRole);
+            if (siblingRole && CFEqual(siblingRole, kAXCheckBoxRole)) {
+                CFTypeRef before = NULL;
+                AXUIElementCopyAttributeValue((__bridge AXUIElementRef)sibling, kAXValueAttribute, &before);
+                // A first-grant test must start disabled. Do not toggle an
+                // existing grant or treat an old ad-hoc identity as fresh.
+                AXError result = before && ![(__bridge id)before boolValue]
+                    ? AXUIElementPerformAction((__bridge AXUIElementRef)sibling, kAXPressAction)
+                    : kAXErrorIllegalArgument;
+                emit(@{@"kind": @"permission-switch", @"status": @(result), @"title": press,
+                       @"before": before ? [(__bridge id)before description] : @""});
+                if (before) CFRelease(before);
+                clicked = result == kAXErrorSuccess;
+            }
+            if (siblingRole) CFRelease(siblingRole);
+        }
+        if (siblings) CFRelease(siblings);
+        if (parent) CFRelease(parent);
+    }
     if (press && title && [press isEqualToString:(__bridge NSString *)title]) {
         AXError result = AXUIElementPerformAction(element, kAXPressAction);
         emit(@{@"kind": @"pressed", @"status": @(result), @"title": press});
@@ -197,6 +223,42 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
 
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
+        if (argc == 3 && strcmp(argv[1], "product-pid") == 0) {
+            NSString *path = [NSString stringWithUTF8String:argv[2]];
+            for (NSRunningApplication *app in NSWorkspace.sharedWorkspace.runningApplications) {
+                if ([app.bundleURL.path isEqualToString:path] &&
+                    [app.executableURL.lastPathComponent isEqualToString:@"keycrash"]) {
+                    emit(@{@"kind": @"product-ui", @"pid": @(app.processIdentifier)});
+                    return 0;
+                }
+            }
+            return 1;
+        }
+        if (argc == 2 && strcmp(argv[1], "permission-watch") == 0) {
+            [NSApplication sharedApplication];
+            [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+            [NSApp finishLaunching];
+            emit(@{@"kind": @"permission-before", @"pid": @(getpid()),
+                   @"post": @(CGPreflightPostEventAccess()), @"ax": @(AXIsProcessTrusted())});
+            CGRequestPostEventAccess();
+            for (int i = 0; i < 120; i++) {
+                emit(@{@"kind": @"permission-poll", @"pid": @(getpid()),
+                       @"post": @(CGPreflightPostEventAccess()), @"ax": @(AXIsProcessTrusted())});
+                [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1]];
+            }
+            return 0;
+        }
+        if ((argc == 3 || argc == 4) && strcmp(argv[1], "settings-ui") == 0) {
+            // Normal Accessibility UI only; never modify TCC storage.
+            pid_t pid = (pid_t)strtol(argv[2], NULL, 10);
+            NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
+            if (![app.bundleIdentifier isEqualToString:@"com.apple.systempreferences"]) return 65;
+            AXUIElementRef root = AXUIElementCreateApplication(pid);
+            int budget = 600;
+            bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget);
+            CFRelease(root);
+            return argc == 4 && !clicked ? 1 : 0;
+        }
         if (argc == 3 && strcmp(argv[1], "product-ui") == 0) {
             NSString *binary = [[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent]
                 stringByAppendingPathComponent:@"keycrash"];

@@ -34,6 +34,11 @@ macro_rules! m {
 
 const MESSAGES: &[Message] = &[
     m!(
+        "系统设置中有此组合",
+        "Shortcut enabled in system settings",
+        "システム設定で有効な組み合わせ"
+    ),
+    m!(
         "没有观察到占用软件",
         "No receiving app observed",
         "受信するアプリが見つかりませんでした"
@@ -124,9 +129,9 @@ const MESSAGES: &[Message] = &[
         "⌃、⌥、⇧、⌘ を選び、対象キーだけを押します。"
     ),
     m!(
-        "此组合已在 macOS 系统快捷键中启用。",
-        "This combination is enabled in macOS system shortcuts.",
-        "macOS のシステム設定で有効なショートカットです。"
+        "系统设置中启用了此组合；仍可定位实际接收的软件。",
+        "Enabled in system settings. Locate can still identify the receiving app.",
+        "システム設定で有効です。実際に受信するアプリを引き続き特定できます。"
     ),
     m!(
         "macOS 系统快捷键 · 未尝试注册",

@@ -8,7 +8,7 @@
 
 适用于 **Windows 10 / 11（64 位）和 macOS**；支持中文、英文和日文。
 
-v0.2.0 已撤回。v0.2.1 补上 Mac 占用软件定位，支持独占与共享热键；使用与验证范围见 [macOS 说明](docs/MACOS.md)。
+v0.2.0 已撤回。v0.2.2 修复 Mac 系统快捷键命中后无法继续定位，以及首次授权后必须重启的问题；使用与验证范围见 [macOS 说明](docs/MACOS.md)。
 
 ![KeyCrash 检测到 QQ 占用了 Ctrl + Alt + A](docs/images/keycrash-screenshot.png)
 

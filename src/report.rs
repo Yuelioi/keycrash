@@ -15,6 +15,7 @@ pub enum EvidenceSource {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OwnerAttribution {
     NotApplicable,
+    #[cfg(windows)]
     KnownSystem,
     Unknown,
 }
@@ -35,7 +36,7 @@ impl SystemRule {
     pub fn explanation(self) -> &'static str {
         match self {
             #[cfg(target_os = "macos")]
-            Self::MacSymbolicHotKey => "此组合已在 macOS 系统快捷键中启用。",
+            Self::MacSymbolicHotKey => "系统设置中启用了此组合；仍可定位实际接收的软件。",
             #[cfg(windows)]
             Self::SecureAttention => "Ctrl + Alt + Delete 由 Windows 安全桌面保留",
             #[cfg(windows)]
