@@ -44,7 +44,10 @@ static int hold(UInt32 key) {
     struct pollfd input = {STDIN_FILENO, POLLIN, 0};
     while (deadline.timeIntervalSinceNow > 0) {
         if (poll(&input, 1, 0) > 0) break;
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.01, true);
+        NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny
+                                          untilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]
+                                             inMode:NSDefaultRunLoopMode dequeue:YES];
+        if (event) [NSApp sendEvent:event];
     }
     result = UnregisterEventHotKey(ref);
     if (handler) RemoveEventHandler(handler);
@@ -155,6 +158,8 @@ int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if (argc != 3) return 64;
         [NSApplication sharedApplication];
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+        [NSApp finishLaunching];
         if (strcmp(argv[1], "hold") == 0) return hold((UInt32)strtoul(argv[2], NULL, 10));
         if (strcmp(argv[1], "query") == 0) return query((pid_t)strtol(argv[2], NULL, 10));
         if (strcmp(argv[1], "monitor") == 0) return monitor();
