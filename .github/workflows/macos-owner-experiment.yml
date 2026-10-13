@@ -7,6 +7,7 @@ on:
     paths:
       - examples/macos-owner-query.m
       - scripts/test-macos-owner-query.py
+      - scripts/test-macos-owner-events.py
       - .github/workflows/macos-owner-experiment.yml
 
 permissions:
@@ -32,3 +33,6 @@ jobs:
         run: |
           sw_vers
           python3 scripts/test-macos-owner-query.py .task/macos-owner-query/owner-query
+      - name: Verify annotated event target hypothesis
+        if: ${{ !cancelled() }}
+        run: python3 scripts/test-macos-owner-events.py .task/macos-owner-query/owner-query --trigger-fixture

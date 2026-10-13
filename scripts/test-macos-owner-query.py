@@ -16,7 +16,7 @@ from pathlib import Path
 def stop(process):
     if process.poll() is None:
         try:
-            process.communicate("release\n", timeout=5)
+            process.communicate("release\n" if process.text_mode else b"release\n", timeout=5)
         except subprocess.TimeoutExpired:
             process.kill()
             process.communicate()
