@@ -397,6 +397,7 @@ export component AppWindow inherits Window {
     callback modifiers-changed();
     callback locate-owner();
     callback open-owner-location();
+    callback open-github();
     callback language-changed(string);
 
     Rectangle {
@@ -859,11 +860,21 @@ export component AppWindow inherits Window {
                 Text {
                     x: 20px;
                     y: 252px;
-                    width: parent.width - 40px;
+                    width: parent.width - 156px;
                     height: 18px;
                     text: root.language == "en" ? "Esc or × returns" : root.language == "ja" ? "Esc または × で戻る" : "Esc 或右上角 × 返回";
                     color: #59676d;
                     font-size: 11px;
+                }
+
+                OutlineButton {
+                    x: parent.width - 128px;
+                    y: 246px;
+                    width: 108px;
+                    height: 30px;
+                    text: "GitHub ↗";
+                    accessible-name: root.language == "en" ? "Open GitHub repository" : root.language == "ja" ? "GitHub リポジトリを開く" : "打开 GitHub 仓库";
+                    clicked => { root.open-github(); }
                 }
             }
         }

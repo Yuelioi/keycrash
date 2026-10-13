@@ -108,7 +108,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cat > release-notes.md <<'EOF'
-          新增 macOS 全局监听检查，支持选择软件并定位影响快捷键传递的进程。优化定位结果展示、语言切换及取消后的监听恢复。
+          在使用说明页新增 GitHub 链接，可直接打开项目仓库。
 
           - **Mac M 系列**：下载 `macos-arm64.zip`。
           - **Intel Mac**：下载 `macos-x86_64.zip`。

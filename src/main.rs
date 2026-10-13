@@ -57,6 +57,7 @@ const MODE_OWNER_FOUND: &str = "owner-found";
 #[cfg(windows)]
 const MODE_UNSUPPORTED: &str = "unsupported";
 const MODE_ERROR: &str = "error";
+const PROJECT_URL: &str = "https://github.com/Yuelioi/keycrash";
 
 fn main() -> Result<(), slint::PlatformError> {
     #[cfg(target_os = "macos")]
@@ -258,6 +259,12 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         });
     }
+
+    ui.on_open_github(|| {
+        if let Err(error) = open_project_url() {
+            eprintln!("Could not open GitHub: {error}");
+        }
+    });
 
     #[cfg(windows)]
     let _action_key_fallback = install_action_key_fallback(&ui, last_blocked_shortcut);
@@ -1056,6 +1063,40 @@ fn open_file_location(path: &Path) -> Result<(), String> {
         // Explorer's parser expects /select,"<path>". Command::arg would quote
         // the whole argument when the path contains spaces such as Program Files.
         .raw_arg(explorer_select_argument(path))
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(windows)]
+fn open_project_url() -> Result<(), String> {
+    use windows::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+    use windows::core::{PCWSTR, w};
+
+    let url: Vec<u16> = PROJECT_URL.encode_utf16().chain(Some(0)).collect();
+    // ShellExecute opens HTTPS URLs with the user's default browser.
+    let result = unsafe {
+        ShellExecuteW(
+            None,
+            w!("open"),
+            PCWSTR(url.as_ptr()),
+            PCWSTR::null(),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    let code = result.0 as isize;
+    if code > 32 {
+        Ok(())
+    } else {
+        Err(format!("ShellExecute failed ({code})"))
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn open_project_url() -> Result<(), String> {
+    Command::new("/usr/bin/open")
+        .arg(PROJECT_URL)
         .spawn()
         .map(|_| ())
         .map_err(|error| error.to_string())
