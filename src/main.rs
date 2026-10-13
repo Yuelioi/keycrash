@@ -19,6 +19,10 @@ mod i18n;
 mod key_capture;
 #[cfg(windows)]
 mod owner_probe;
+
+#[cfg(target_os = "macos")]
+#[path = "macos/filters.rs"]
+mod mac_filters;
 #[cfg(target_os = "macos")]
 #[path = "macos/owner_probe.rs"]
 mod owner_probe;
@@ -55,6 +59,10 @@ const MODE_UNSUPPORTED: &str = "unsupported";
 const MODE_ERROR: &str = "error";
 
 fn main() -> Result<(), slint::PlatformError> {
+    #[cfg(target_os = "macos")]
+    if let Some(code) = mac_filters::guardian_entry() {
+        std::process::exit(code);
+    }
     let ui = AppWindow::new()?;
     ui.set_is_macos(cfg!(target_os = "macos"));
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
@@ -66,6 +74,14 @@ fn main() -> Result<(), slint::PlatformError> {
     #[cfg(target_os = "macos")]
     let probe_worker = Rc::new(RefCell::new(None::<std::thread::JoinHandle<()>>));
     set_idle(&ui);
+
+    #[cfg(target_os = "macos")]
+    install_filter_actions(
+        &ui,
+        last_blocked_shortcut.clone(),
+        active_probe.clone(),
+        probe_worker.clone(),
+    );
 
     {
         let weak_ui = ui.as_weak();
@@ -198,7 +214,18 @@ fn main() -> Result<(), slint::PlatformError> {
                 cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
             }
             if let Some(ui) = weak_ui.upgrade() {
-                set_idle(&ui);
+                if ui.get_filter_running() {
+                    ui.set_state_title(
+                        i18n::text(
+                            i18n::Language::from_code(ui.get_language().as_str()),
+                            "正在恢复全局监听",
+                        )
+                        .into(),
+                    );
+                    ui.set_action_enabled(false);
+                } else {
+                    set_idle(&ui);
+                }
             }
         });
     }
@@ -267,6 +294,8 @@ fn main() -> Result<(), slint::PlatformError> {
         .ok_or_else(|| slint::PlatformError::Other("Could not install local key capture".into()))?
     };
 
+    #[cfg(debug_assertions)]
+    let _diagnostic_snapshots = diagnostic_snapshots(&ui);
     let result = ui.run();
     #[cfg(target_os = "macos")]
     if let Some(cancelled) = active_probe.borrow_mut().take() {
@@ -278,6 +307,247 @@ fn main() -> Result<(), slint::PlatformError> {
         let _ = worker.join();
     }
     result
+}
+
+// Debug-only visual acceptance: capture this renderer, without screen-recording
+// permission or reading other windows. No snapshot option exists in release builds.
+#[cfg(debug_assertions)]
+fn diagnostic_snapshots(ui: &AppWindow) -> Option<slint::Timer> {
+    use std::io::Write;
+    let args: Vec<_> = std::env::args().collect();
+    let index = args.iter().position(|a| a == "--diagnostic-snapshots")?;
+    let directory = std::path::PathBuf::from(args.get(index + 1)?);
+    if !directory.is_dir() {
+        return None;
+    }
+    let weak = ui.as_weak();
+    let seen = RefCell::new(std::collections::BTreeSet::new());
+    let previous = RefCell::new(String::new());
+    let timer = slint::Timer::default();
+    timer.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_millis(400),
+        move || {
+            let Some(ui) = weak.upgrade() else {
+                return;
+            };
+            let name = format!(
+                "{}-{}-{}-{}",
+                ui.get_mode(),
+                ui.get_language(),
+                ui.get_filter_visible(),
+                ui.get_filter_selected()
+            );
+            // Wait one rendering interval after a state/language transition.
+            if *previous.borrow() != name {
+                *previous.borrow_mut() = name;
+                return;
+            }
+            if seen.borrow().len() >= 24 || seen.borrow().contains(&name) {
+                return;
+            }
+            let Ok(pixels) = ui.window().take_snapshot() else {
+                return;
+            };
+            let Ok(file) = std::fs::File::create(directory.join(format!("{name}.ppm"))) else {
+                return;
+            };
+            let mut file = std::io::BufWriter::new(file);
+            if write!(file, "P6\n{} {}\n255\n", pixels.width(), pixels.height()).is_err() {
+                return;
+            }
+            for pixel in pixels.as_bytes().as_chunks::<4>().0 {
+                if file.write_all(&pixel[..3]).is_err() {
+                    return;
+                }
+            }
+            if file.flush().is_ok() {
+                seen.borrow_mut().insert(name);
+            }
+        },
+    );
+    Some(timer)
+}
+
+#[cfg(target_os = "macos")]
+type ActiveProbe = Rc<RefCell<Option<std::sync::Arc<std::sync::atomic::AtomicBool>>>>;
+#[cfg(target_os = "macos")]
+type ProbeWorker = Rc<RefCell<Option<std::thread::JoinHandle<()>>>>;
+
+#[cfg(target_os = "macos")]
+fn install_filter_actions(
+    ui: &AppWindow,
+    shortcut: Rc<RefCell<Option<Shortcut>>>,
+    active: ActiveProbe,
+    worker: ProbeWorker,
+) {
+    use slint::Model;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let candidates = Rc::new(RefCell::new(Vec::<mac_filters::Candidate>::new()));
+    let choices = Rc::new(slint::VecModel::<FilterChoice>::default());
+    ui.set_filter_choices(choices.clone().into());
+    {
+        let weak = ui.as_weak();
+        let candidates = candidates.clone();
+        let choices = choices.clone();
+        ui.on_show_filters(move || {
+            let Some(ui) = weak.upgrade() else {
+                return;
+            };
+            if ui.get_mode() == MODE_LOCATING || !ui.get_filter_available() {
+                return;
+            }
+            let language = i18n::Language::from_code(ui.get_language().as_str());
+            ui.set_filter_visible(true);
+            ui.set_filter_selected(0);
+            choices.set_vec(Vec::new());
+            candidates.borrow_mut().clear();
+            match mac_filters::candidates() {
+                Ok(found) => {
+                    let message = if found.is_empty() {
+                        "没有找到可参与检查的全局监听软件。"
+                    } else {
+                        "这里只列出候选软件，尚未确认它们使用了此组合。"
+                    };
+                    ui.set_filter_message(i18n::text(language, message).into());
+                    choices.set_vec(
+                        found
+                            .iter()
+                            .map(|c| FilterChoice {
+                                name: c.name.clone().into(),
+                                path: c.path.clone().into(),
+                                pid: c.pid as i32,
+                                selected: false,
+                            })
+                            .collect::<Vec<_>>(),
+                    );
+                    *candidates.borrow_mut() = found;
+                }
+                Err(error) => ui.set_filter_message(i18n::text(language, error).into()),
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        let choices = choices.clone();
+        ui.on_toggle_filter(move |index, selected| {
+            let Some(ui) = weak.upgrade() else {
+                return;
+            };
+            let Ok(index) = usize::try_from(index) else {
+                return;
+            };
+            if let Some(mut row) = choices.row_data(index) {
+                if selected && ui.get_filter_selected() >= 6 {
+                    return;
+                }
+                row.selected = selected;
+                choices.set_row_data(index, row);
+                ui.set_filter_selected(
+                    (0..choices.row_count())
+                        .filter(|&i| choices.row_data(i).is_some_and(|c| c.selected))
+                        .count() as i32,
+                );
+            }
+        });
+    }
+    {
+        let weak = ui.as_weak();
+        ui.on_start_filters(move || {
+            let Some(ui)=weak.upgrade() else { return; };
+            if ui.get_mode()==MODE_LOCATING || !ui.get_filter_visible() { return; }
+            let Some(shortcut)=shortcut.borrow().clone() else { return; };
+            let language=i18n::Language::from_code(ui.get_language().as_str());
+            if !owner_probe::has_permission() {
+                owner_probe::request_permission();
+                ui.set_filter_message(i18n::text(language,"在系统设置中允许 KeyCrash，然后返回点击开始检查。").into());
+                let _=Command::new("/usr/bin/open").arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").spawn();
+                return;
+            }
+            let selected:Vec<_>=candidates.borrow().iter().enumerate()
+                .filter(|(i,_)|choices.row_data(*i).is_some_and(|c|c.selected))
+                .map(|(_,c)|c.clone()).collect();
+            if selected.is_empty() || selected.len()>6 { return; }
+            ui.set_filter_visible(false);
+            ui.set_filter_running(true);
+            let label=shortcut.label();
+            set_view(&ui,MODE_LOCATING,"正在检查全局监听","将多次触发此组合，结束或取消后恢复监听。",
+                &label,"仅检查所选软件","取消",color("8B6B16"));
+            let cancelled=Arc::new(AtomicBool::new(false));
+            *active.borrow_mut()=Some(cancelled.clone());
+            let result_ui=ui.as_weak();
+            if let Some(previous)=worker.borrow_mut().take() { let _=previous.join(); }
+            *worker.borrow_mut()=Some(std::thread::spawn(move || {
+                let report=mac_filters::locate(&shortcut,&selected,&cancelled);
+                let _=slint::invoke_from_event_loop(move || {
+                    let Some(ui)=result_ui.upgrade() else { return; };
+                    ui.set_filter_running(false);
+                    if cancelled.load(Ordering::Relaxed) && !matches!(&report,Err(e) if *e==mac_filters::RESTORE) {
+                        set_idle(&ui); return;
+                    }
+                    match report {
+                        Ok(findings)=>apply_filter_report(&ui,&label,findings),
+                        Err(error)=>set_view(&ui,MODE_ERROR,"全局监听检查未完成",error,&label,"未输出定位结论","重新检测",color("A33B32")),
+                    }
+                });
+            }));
+        });
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn apply_filter_report(ui: &AppWindow, label: &str, findings: mac_filters::Findings) {
+    let language = i18n::Language::from_code(ui.get_language().as_str());
+    let mut lines = Vec::new();
+    for (heading, owners) in [
+        ("改变按键传递的软件", findings.filters.as_slice()),
+        ("热键接收者", findings.receivers.as_slice()),
+    ] {
+        if owners.is_empty() {
+            continue;
+        }
+        lines.push(i18n::text(language, heading).to_string());
+        for owner in owners {
+            let path = Path::new(&owner.path);
+            let name = path
+                .ancestors()
+                .find(|p| p.extension().is_some_and(|e| e == "app"))
+                .and_then(Path::file_stem)
+                .or_else(|| path.file_name())
+                .unwrap_or_default()
+                .to_string_lossy();
+            lines.push(format!("{name} · PID {}\n{}", owner.pid, owner.path));
+        }
+        lines.push(String::new());
+    }
+    let found = !lines.is_empty();
+    if !found {
+        lines.push(
+            i18n::text(
+                language,
+                "所选软件未改变此次按键传递，不能排除未参与检查的软件。",
+            )
+            .to_string(),
+        );
+    }
+    set_view(
+        ui,
+        "filter-result",
+        if found {
+            "全局监听检查完成"
+        } else {
+            "未确认影响此组合的软件"
+        },
+        "检查已结束，所选监听已恢复。",
+        label,
+        "仅检查所选软件",
+        "重新检测",
+        color("007A7E"),
+    );
+    ui.set_filter_report(lines.join("\n").into());
 }
 
 #[cfg(windows)]
@@ -346,6 +616,8 @@ fn detect_shortcut(
         *last_blocked_shortcut.borrow_mut() = None;
     }
     apply_report(ui, &shortcut.label(), report);
+    #[cfg(target_os = "macos")]
+    ui.set_filter_available(last_blocked_shortcut.borrow().is_some());
 }
 
 fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
@@ -712,9 +984,22 @@ fn set_view(
     ui.set_action_enabled(mode != MODE_LOCATING || cfg!(target_os = "macos"));
     ui.set_accent(accent);
     ui.set_owner_path(SharedString::new());
+    if mode == MODE_IDLE || mode == MODE_WAITING_KEY {
+        ui.set_filter_available(false);
+        ui.set_filter_visible(false);
+    }
 }
 
 fn relocalize_view(ui: &AppWindow, language: i18n::Language) {
+    ui.set_filter_message(i18n::text(language, ui.get_filter_message().as_str()).into());
+    ui.set_filter_report(
+        ui.get_filter_report()
+            .lines()
+            .map(|line| i18n::text(language, line))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .into(),
+    );
     let owner_error =
         i18n::text(i18n::Language::Zh, ui.get_state_title().as_str()) == "定位没有完成";
     ui.set_state_title(SharedString::from(i18n::text(

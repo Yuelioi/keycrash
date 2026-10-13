@@ -134,7 +134,7 @@ unsafe extern "C" fn observe(_: Ref, kind: u32, event: Ref, context: Ref) -> Ref
     event
 }
 
-fn event_flags(shortcut: &Shortcut) -> u64 {
+pub(crate) fn event_flags(shortcut: &Shortcut) -> u64 {
     let mut flags = 0;
     for (carbon, quartz) in [(12, 18), (11, 19), (9, 17), (8, 20)] {
         if shortcut.modifiers & (1 << carbon) != 0 {

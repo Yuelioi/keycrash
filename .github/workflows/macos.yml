@@ -54,7 +54,7 @@ jobs:
       - name: Test application and compile native fixture
         run: |
           cargo +stable test --locked --release -p keycrash --target '${{ matrix.target }}'
-          cargo +stable build --locked --release -p keycrash --example macos-hotkey-fixture --example macos-owner-production --target '${{ matrix.target }}'
+          cargo +stable build --locked --release -p keycrash --example macos-hotkey-fixture --example macos-owner-production --example macos-filter-production --target '${{ matrix.target }}'
       - name: Build and validate application bundle
         env:
           RUSTUP_TOOLCHAIN: stable

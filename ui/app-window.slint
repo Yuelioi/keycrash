@@ -7,6 +7,10 @@ FORM: 信号轨迹视觉世界；证据剖面式层级，种子 132c565a。
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 */
 
+import { CheckBox, ScrollView } from "std-widgets.slint";
+
+export struct FilterChoice { name: string, path: string, pid: int, selected: bool }
+
 component LanguageSelect inherits Rectangle {
     in property <string> language;
     in property <bool> enabled: true;
@@ -34,6 +38,7 @@ component LanguageSelect inherits Rectangle {
     accessible-expandable: true;
     accessible-expanded: expanded;
     accessible-action-expand => { root.open(); }
+    accessible-action-default => { root.open(); }
 
     function open() {
         if root.enabled {
@@ -353,7 +358,7 @@ component OutlineButton inherits Rectangle {
 
 export component AppWindow inherits Window {
     width: 460px;
-    height: 380px;
+    height: root.filter-visible ? 520px : root.is-macos && root.filter-available ? 428px : 380px;
     in property <string> app-version;
     in property <bool> is-macos: false;
     title: "KeyCrash v" + root.app-version;
@@ -375,6 +380,16 @@ export component AppWindow inherits Window {
     in-out property <string> owner-path: "";
     in-out property <string> language: "zh";
     property <bool> help-visible: false;
+    in-out property <bool> filter-visible: false;
+    in-out property <bool> filter-available: false;
+    in-out property <bool> filter-running: false;
+    in-out property <[FilterChoice]> filter-choices;
+    in-out property <int> filter-selected: 0;
+    in-out property <string> filter-message;
+    in-out property <string> filter-report;
+    callback show-filters();
+    callback toggle-filter(int, bool);
+    callback start-filters();
 
     callback begin-detection(bool, bool, bool, bool);
     callback action-key-entered(string, bool, bool, bool, bool);
@@ -513,7 +528,7 @@ export component AppWindow inherits Window {
             drop-shadow-color: #26343c26;
             drop-shadow-offset-y: 7px;
             drop-shadow-blur: 18px;
-            visible: !root.help-visible;
+            visible: !root.help-visible && root.mode != "filter-result";
 
             Rectangle { x: 18px; y: 29px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
             Rectangle { x: 18px; y: 57px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
@@ -691,6 +706,7 @@ export component AppWindow inherits Window {
                 Text {
                     text: root.mode == "waiting-key"
                         ? (root.language == "en" ? "Esc cancels · Target key only" : root.language == "ja" ? "Esc でキャンセル · 対象キーのみ" : "Esc 取消 · 只按目标键")
+                        : root.filter-running ? (root.language == "en" ? "Restores listeners after checking" : root.language == "ja" ? "検査後にリスナーを復元" : "检查结束后恢复监听")
                         : root.mode == "locating"
                             ? (root.language == "en" ? "One trigger · Observe process messages" : root.language == "ja" ? "1 回送信 · プロセスメッセージを観測" : "触发一次 · 观察进程消息")
                             : (root.is-macos ? "macOS" : "Windows 10 / 11");
@@ -714,6 +730,27 @@ export component AppWindow inherits Window {
                         root.begin-detection(root.ctrl-selected, root.alt-selected, root.shift-selected, root.win-selected);
                         capture-focus.focus();
                     }
+                }
+            }
+        }
+
+        if (root.is-macos && root.filter-available && root.mode != "locating" && !root.help-visible) : OutlineButton {
+            x: 28px; y: 370px; width: parent.width - 56px; height: 36px;
+            text: root.language == "en" ? "Check global listeners" : root.language == "ja" ? "グローバル監視を調べる" : "检查全局监听";
+            clicked => { root.show-filters(); filter-focus.focus(); }
+        }
+
+        if (root.mode == "filter-result" && !root.help-visible) : Rectangle {
+            x: 28px; y: 138px; width: parent.width - 56px; height: 160px;
+            background: #edf1f2; border-radius: 14px; border-width: 1px; border-color: #b8c2c7;
+            Text { x: 12px; y: 10px; width: parent.width - 24px; height: 20px;
+                text: root.shortcut-text; font-size: 13px; font-weight: 650; color: #11171c; }
+            ScrollView {
+                x: 12px; y: 36px; width: parent.width - 24px; height: parent.height - 46px;
+                viewport-width: self.width;
+                VerticalLayout {
+                    alignment: start;
+                    Text { min-width: 0px; text: root.filter-report; wrap: word-wrap; font-size: 12px; color: #11171c; }
                 }
             }
         }
@@ -862,6 +899,66 @@ export component AppWindow inherits Window {
             accessible-name: root.language == "en" ? "Language" : root.language == "ja" ? "言語" : "语言";
             selected(value) => {
                 root.language-changed(value);
+            }
+        }
+
+        filter-focus := FocusScope {
+            width: parent.width; height: parent.height;
+            enabled: root.filter-visible;
+            key-pressed(event) => {
+                if (event.text == Key.Escape) { root.filter-visible = false; return accept; }
+                return reject;
+            }
+            if (root.filter-visible) : Rectangle {
+                width: parent.width; height: parent.height;
+                background: #edf1f2;
+                TouchArea { }
+                Text {
+                    x: 24px; y: 22px; width: parent.width - 48px; height: 32px;
+                    text: root.language == "en" ? "Choose apps to check" : root.language == "ja" ? "検査するアプリを選択" : "选择参与检查的软件";
+                    font-size: 23px; font-weight: 700; color: #11171c;
+                }
+                Text {
+                    x: 24px; y: 65px; width: parent.width - 48px; height: 76px;
+                    text: root.language == "en" ? "Their global listeners will pause briefly. The shortcut runs several times; other shortcuts or remapping may pause too. Select up to 6 apps." : root.language == "ja" ? "選択したアプリのグローバル監視を一時停止し、組み合わせを複数回送信します。他のショートカットやキー変更も一時停止します。最大6個を選択。" : "将暂时停用所选软件的全局监听，并多次触发此组合。其间其他快捷键或按键重映射也可能暂停。最多选择 6 个软件。";
+                    wrap: word-wrap; font-size: 13px; color: #45545b;
+                }
+                ScrollView {
+                    x: 24px; y: 148px; width: parent.width - 48px; height: 232px;
+                    viewport-width: self.width;
+                    VerticalLayout {
+                        alignment: start;
+                        spacing: 8px;
+                        for item[index] in root.filter-choices : VerticalLayout {
+                            alignment: start;
+                            vertical-stretch: 0;
+                            spacing: 2px;
+                            CheckBox {
+                                text: item.name + " · PID " + item.pid;
+                                checked: item.selected;
+                                enabled: item.selected || root.filter-selected < 6;
+                                toggled => { root.toggle-filter(index, self.checked); }
+                            }
+                            Text { text: item.path; font-size: 10px; color: #59676d; overflow: elide; }
+                        }
+                    }
+                }
+                Text {
+                    x: 24px; y: 390px; width: parent.width - 48px; height: 50px;
+                    text: root.filter-message;
+                    wrap: word-wrap; font-size: 12px; color: #59676d;
+                }
+                HorizontalLayout {
+                    x: 24px; y: 456px; width: parent.width - 48px; height: 40px; spacing: 10px;
+                    OutlineButton { text: root.language == "en" ? "Back" : root.language == "ja" ? "戻る" : "返回"; clicked => { root.filter-visible = false; } }
+                    OutlineButton { text: root.language == "en" ? "Refresh" : root.language == "ja" ? "更新" : "刷新列表"; clicked => { root.show-filters(); } }
+                    ActionButton {
+                        text: root.language == "en" ? "Start check" : root.language == "ja" ? "検査を開始" : "开始检查";
+                        enabled: root.filter-selected > 0 && root.filter-selected <= 6;
+                        action-color: #8b6b16;
+                        clicked => { root.start-filters(); }
+                    }
+                }
             }
         }
 

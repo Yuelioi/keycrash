@@ -173,8 +173,23 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
     AXUIElementCopyAttributeValue(element, kAXValueAttribute, &value);
     emit(@{@"kind": @"ui", @"role": role ? [(__bridge id)role description] : @"",
         @"title": title ? [(__bridge id)title description] : @"",
-        @"value": value ? [(__bridge id)value description] : @"", @"depth": @(depth)});
+        @"value": role && CFEqual(role,kAXTextFieldRole) ? @"<redacted>" : (value ? [(__bridge id)value description] : @""), @"depth": @(depth)});
     bool clicked = false;
+    if ([press hasPrefix:@"@language:"] && role && CFEqual(role,kAXPopUpButtonRole) && value) {
+        NSArray *labels=@[@"简体中文",@"English",@"日本語"],*codes=@[@"zh",@"en",@"ja"];
+        NSUInteger current=[labels indexOfObject:(__bridge id)value], target=[codes indexOfObject:[press substringFromIndex:10]];
+        if (current!=NSNotFound && target!=NSNotFound) {
+            AXError status=AXUIElementPerformAction(element,kAXPressAction);
+            usleep(200000);
+            pid_t pid=0;AXUIElementGetPid(element,&pid);
+            NSUInteger steps=(target+3-current)%3;
+            for (NSUInteger i=0;i<=steps;i++) for (int down=1;down>=0;down--) {
+                CGEventRef event=CGEventCreateKeyboardEvent(NULL,i==steps ? 36:125,down);
+                CGEventSetFlags(event,0);CGEventPostToPid(pid,event);CFRelease(event);usleep(50000);
+            }
+            emit(@{@"kind":@"language",@"status":@(status),@"code":codes[target]});clicked=status==kAXErrorSuccess;
+        }
+    }
     if ([press hasPrefix:@"KeyCrash Permission Test"] && value &&
         CFGetTypeID(value) == CFStringGetTypeID() && CFEqual(value, (__bridge CFStringRef)press)) {
         CFTypeRef parent = NULL, siblings = NULL;
@@ -195,6 +210,11 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
                     : kAXErrorIllegalArgument;
                 emit(@{@"kind": @"permission-switch", @"status": @(result), @"title": press,
                        @"before": before ? [(__bridge id)before description] : @""});
+                CFTypeRef after=NULL;
+                usleep(200000);
+                AXUIElementCopyAttributeValue((__bridge AXUIElementRef)sibling,kAXValueAttribute,&after);
+                emit(@{@"kind":@"permission-switch-after",@"title":press,@"after":after ? [(__bridge id)after description]:@""});
+                if (after) CFRelease(after);
                 if (before) CFRelease(before);
                 clicked = result == kAXErrorSuccess;
             }
@@ -204,11 +224,12 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
         if (parent) CFRelease(parent);
     }
     if (press && title && [press isEqualToString:(__bridge NSString *)title]) {
-        AXError result = AXUIElementPerformAction(element, kAXPressAction);
+        AXError result = AXUIElementPerformAction(element,kAXPressAction);
         emit(@{@"kind": @"pressed", @"status": @(result), @"title": press});
         clicked = result == kAXErrorSuccess;
     }
-    AXUIElementCopyAttributeValue(element, kAXChildrenAttribute, &children);
+    AXUIElementCopyAttributeValue(element,
+        role && CFEqual(role,kAXApplicationRole) ? kAXWindowsAttribute:kAXChildrenAttribute,&children);
     if (!clicked && children && CFGetTypeID(children) == CFArrayGetTypeID()) {
         for (id child in (__bridge NSArray *)children) {
             if (inspectUI((__bridge AXUIElementRef)child, press, depth + 1, budget, element) && press) {
@@ -225,7 +246,75 @@ static bool inspectUI(AXUIElementRef element, NSString *press, int depth, int *b
 }
 
 int main(int argc, const char *argv[]) {
+    if (argc==2 && strcmp(argv[1],"replacement-fixture")==0) {
+        NSString *binary=[[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent]
+            stringByAppendingPathComponent:@"KeyCrash Replacement Fixture.app/Contents/MacOS/owner-mechanisms"];
+        execl(binary.fileSystemRepresentation,binary.fileSystemRepresentation,"tap-1-replace",NULL);
+        return 70;
+    }
+    if (argc==6 && strcmp(argv[1],"filter-production")==0) {
+        NSString *binary=[[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"filter-production"];
+        execl(binary.fileSystemRepresentation,binary.fileSystemRepresentation,argv[2],argv[3],argv[4],argv[5],NULL);
+        return 70;
+    }
     @autoreleasepool {
+        if (argc==3 && strcmp(argv[1],"tap-state")==0) {
+            pid_t pid=(pid_t)strtol(argv[2],NULL,10);
+            CGEventTapInformation entries[512];uint32_t count=0;
+            if (CGGetEventTapList(512,entries,&count) || count>=512) return 2;
+            NSMutableArray *rows=[NSMutableArray new];
+            for (uint32_t i=0;i<count;i++) if (entries[i].tappingProcess==pid) {
+                [rows addObject:@{@"id":@(entries[i].eventTapID),@"enabled":@(entries[i].enabled),@"mask":@(entries[i].eventsOfInterest)}];
+            }
+            emit(@{@"pid":@(pid),@"taps":rows});return 0;
+        }
+        if (argc == 3 && strcmp(argv[1], "tap-toggle-fixture") == 0) {
+            NSString *binary = [[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent]
+                stringByAppendingPathComponent:@"owner-tap-toggle"];
+            execl(binary.fileSystemRepresentation, binary.fileSystemRepresentation, argv[2], NULL);
+            return 70;
+        }
+        if (argc == 2 && strcmp(argv[1], "global-chain") == 0) {
+            NSString *binary = [[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent]
+                stringByAppendingPathComponent:@"owner-global-chain"];
+            execl(binary.fileSystemRepresentation, binary.fileSystemRepresentation, NULL);
+            return 70;
+        }
+        if (argc == 2 && strcmp(argv[1], "desktop-state") == 0) {
+            TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+            NSString *identifier = source ? (__bridge NSString *)TISGetInputSourceProperty(source, kTISPropertyInputSourceID) : @"";
+            NSRunningApplication *front = NSWorkspace.sharedWorkspace.frontmostApplication;
+            emit(@{@"kind":@"desktop", @"front_pid":@(front.processIdentifier),
+                   @"front_bundle":front.bundleIdentifier ?: @"", @"input_source":identifier ?: @"",
+                   @"secure_input":@(IsSecureEventInputEnabled())});
+            if (source) CFRelease(source);
+            return 0;
+        }
+        if (argc == 4 && strcmp(argv[1], "desktop-restore") == 0) {
+            NSString *identifier = [NSString stringWithUTF8String:argv[3]];
+            NSDictionary *filter = @{(__bridge NSString *)kTISPropertyInputSourceID:identifier};
+            CFArrayRef sources = TISCreateInputSourceList((__bridge CFDictionaryRef)filter, true);
+            OSStatus status = -1;
+            if (sources && CFArrayGetCount(sources)) status = TISSelectInputSource((TISInputSourceRef)CFArrayGetValueAtIndex(sources,0));
+            if (sources) CFRelease(sources);
+            NSRunningApplication *front = [NSRunningApplication runningApplicationWithProcessIdentifier:(pid_t)strtol(argv[2],NULL,10)];
+            [front activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+            emit(@{@"kind":@"restored", @"input_status":@(status)});
+            return status ? 1 : 0;
+        }
+        if (argc == 3 && strcmp(argv[1], "mechanism-activate") == 0) {
+            NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:(pid_t)strtol(argv[2], NULL, 10)];
+            if (![app.executableURL.lastPathComponent isEqualToString:@"owner-mechanisms"]) return 65;
+            [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+            usleep(200000);
+            return 0;
+        }
+        if (argc == 3 && strcmp(argv[1], "mechanism") == 0) {
+            NSString *binary = [[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent]
+                stringByAppendingPathComponent:@"owner-mechanisms"];
+            execl(binary.fileSystemRepresentation, binary.fileSystemRepresentation, argv[2], NULL);
+            return 70;
+        }
         if (argc == 3 && strcmp(argv[1], "product-pid") == 0) {
             NSString *path = [NSString stringWithUTF8String:argv[2]];
             for (NSRunningApplication *app in NSWorkspace.sharedWorkspace.runningApplications) {
@@ -256,16 +345,19 @@ int main(int argc, const char *argv[]) {
             pid_t pid = (pid_t)strtol(argv[2], NULL, 10);
             NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
             if (![app.bundleIdentifier isEqualToString:@"com.apple.systempreferences"]) return 65;
+            [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
             AXUIElementRef root = AXUIElementCreateApplication(pid);
+            usleep(200000);
             int budget = 600;
             bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget, NULL);
             CFRelease(root);
             return argc == 4 && !clicked ? 1 : 0;
         }
-        if (argc == 3 && strcmp(argv[1], "product-ui") == 0) {
+        if ((argc == 3 || argc == 4) && strcmp(argv[1], "product-ui") == 0) {
             NSString *binary = [[[NSString stringWithUTF8String:argv[0]] stringByDeletingLastPathComponent]
                 stringByAppendingPathComponent:@"keycrash"];
             emit(@{@"kind": @"product-ui", @"pid": @(getpid())});
+            if (argc==4) execl(binary.fileSystemRepresentation,binary.fileSystemRepresentation,"--diagnostic-snapshots",argv[3],NULL);
             execl(binary.fileSystemRepresentation, binary.fileSystemRepresentation, NULL);
             return 70;
         }
@@ -273,6 +365,7 @@ int main(int argc, const char *argv[]) {
             pid_t pid = (pid_t)strtol(argv[2], NULL, 10);
             NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
             if (![app.executableURL.lastPathComponent isEqualToString:@"keycrash"]) return 65;
+            if (strcmp(argv[1],"ui-language")==0 && argc==4) [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
             if (strcmp(argv[1], "ui-key") == 0 && argc == 4) {
                 [app activateWithOptions:NSApplicationActivateIgnoringOtherApps];
                 usleep(150000);
@@ -292,7 +385,9 @@ int main(int argc, const char *argv[]) {
             AXUIElementSetAttributeValue(root, CFSTR("AXEnhancedUserInterface"), kCFBooleanTrue);
             usleep(200000);
             int budget = 300;
-            bool clicked = inspectUI(root, argc == 4 ? [NSString stringWithUTF8String:argv[3]] : nil, 0, &budget, NULL);
+            NSString *action=argc==4 ? [NSString stringWithUTF8String:argv[3]]:nil;
+            if (strcmp(argv[1],"ui-language")==0) action=[@"@language:" stringByAppendingString:action ?: @""];
+            bool clicked = inspectUI(root, action, 0, &budget, NULL);
             CFRelease(root);
             return argc == 4 && !clicked ? 1 : 0;
         }

@@ -7,12 +7,25 @@ The fixed diagnostic app launches the changing owner-query binary beside it.
 import argparse
 import json
 import os
+import plistlib
 import subprocess
 import sys
 import tempfile
 import time
 from contextlib import ExitStack
 from pathlib import Path
+
+
+def require_unlocked_desktop():
+    """Fail before permission/UI operations when the console is locked."""
+    root = plistlib.loads(subprocess.check_output(['ioreg', '-n', 'Root', '-d1', '-a']))
+    if isinstance(root, list):
+        root = root[0]
+    sessions = [s for s in root.get('IOConsoleUsers', [])
+                if s.get('kCGSSessionUserIDKey') == os.getuid()
+                and s.get('kCGSSessionOnConsoleKey')]
+    if not sessions or any(s.get('CGSSessionScreenIsLocked', False) for s in sessions):
+        raise RuntimeError('Mac desktop is locked or unavailable; unlock it before running GUI tests')
 
 
 class AppProcess:

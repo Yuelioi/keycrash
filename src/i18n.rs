@@ -34,6 +34,123 @@ macro_rules! m {
 
 const MESSAGES: &[Message] = &[
     m!(
+        "正在恢复全局监听",
+        "Restoring global listeners",
+        "グローバル監視を復元中"
+    ),
+    m!(
+        "没有找到可参与检查的全局监听软件。",
+        "No eligible global listener apps found.",
+        "検査できるグローバル監視アプリがありません。"
+    ),
+    m!(
+        "这里只列出候选软件，尚未确认它们使用了此组合。",
+        "These are candidates; use of this shortcut has not been confirmed.",
+        "候補の一覧です。この組み合わせの使用はまだ確認していません。"
+    ),
+    m!(
+        "在系统设置中允许 KeyCrash，然后返回点击开始检查。",
+        "Allow KeyCrash in System Settings, then return and start the check.",
+        "システム設定で KeyCrash を許可してから検査を開始してください。"
+    ),
+    m!(
+        "正在检查全局监听",
+        "Checking global listeners",
+        "グローバル監視を検査中"
+    ),
+    m!(
+        "将多次触发此组合，结束或取消后恢复监听。",
+        "The shortcut runs several times. Listeners are restored after completion or cancellation.",
+        "組み合わせを複数回送信し、完了・キャンセル後に監視を復元します。"
+    ),
+    m!("仅检查所选软件", "Selected apps only", "選択したアプリのみ"),
+    m!(
+        "全局监听检查未完成",
+        "Global listener check incomplete",
+        "グローバル監視の検査が未完了です"
+    ),
+    m!(
+        "未输出定位结论",
+        "No attribution result",
+        "特定結果はありません"
+    ),
+    m!(
+        "改变按键传递的软件",
+        "Apps that changed key delivery",
+        "キーの伝達を変更したアプリ"
+    ),
+    m!("热键接收者", "Hotkey receivers", "ホットキーの受信アプリ"),
+    m!(
+        "所选软件未改变此次按键传递，不能排除未参与检查的软件。",
+        "Selected apps did not change this key delivery. Other apps were not ruled out.",
+        "選択したアプリは今回のキー伝達を変更しませんでした。未選択のアプリは除外できません。"
+    ),
+    m!(
+        "全局监听检查完成",
+        "Global listener check complete",
+        "グローバル監視の検査が完了しました"
+    ),
+    m!(
+        "未确认影响此组合的软件",
+        "No affecting app confirmed",
+        "影響するアプリを確認できませんでした"
+    ),
+    m!(
+        "检查已结束，所选监听已恢复。",
+        "Check finished. Selected listeners restored.",
+        "検査が終了し、選択した監視を復元しました。"
+    ),
+    m!(
+        "参与软件的监听状态已改变，请刷新列表后重试。",
+        "A selected app's listeners changed. Refresh the list and retry.",
+        "選択したアプリの監視状態が変わりました。一覧を更新して再試行してください。"
+    ),
+    m!(
+        "无法确认监听器已全部恢复，请重新打开参与检查的软件。",
+        "Listener restoration could not be confirmed. Reopen the selected apps.",
+        "監視の復元を確認できません。選択したアプリを開き直してください。"
+    ),
+    m!(
+        "无法启动全局监听检查，请重试。",
+        "Could not start the global listener check. Please retry.",
+        "グローバル監視の検査を開始できません。再試行してください。"
+    ),
+    m!(
+        "无法读取全局监听软件，请重试。",
+        "Could not list global listener apps. Please retry.",
+        "グローバル監視アプリを取得できません。再試行してください。"
+    ),
+    m!(
+        "此系统无法执行全局监听检查。",
+        "Global listener checking is unavailable on this system.",
+        "このシステムではグローバル監視を検査できません。"
+    ),
+    m!(
+        "安全输入已启用，请关闭密码输入窗口后重试。",
+        "Secure Input is enabled. Close password entry windows and retry.",
+        "セキュア入力が有効です。パスワード入力画面を閉じて再試行してください。"
+    ),
+    m!(
+        "请在系统设置中允许辅助功能后重试。",
+        "Allow Accessibility in System Settings, then retry.",
+        "システム設定でアクセシビリティを許可して再試行してください。"
+    ),
+    m!(
+        "请选择一到六个软件参与检查。",
+        "Select one to six apps to check.",
+        "検査するアプリを1〜6個選択してください。"
+    ),
+    m!(
+        "停用所选监听后按键仍未正常传递，无法确认原因。",
+        "Key delivery did not recover with selected listeners paused. The cause is unconfirmed.",
+        "選択した監視を停止してもキーの伝達が回復せず、原因を確認できません。"
+    ),
+    m!(
+        "多次检查结果不一致，请稍后重试。",
+        "Repeated checks disagreed. Please try again later.",
+        "複数回の検査結果が一致しません。後で再試行してください。"
+    ),
+    m!(
         "系统设置中有此组合",
         "Shortcut enabled in system settings",
         "システム設定で有効な組み合わせ"

@@ -8,8 +8,6 @@ KeyCrash checks for global hotkey registration conflicts and tries to identify t
 
 For **Windows 10 / 11 (64-bit) and macOS**. Available in Chinese, English, and Japanese.
 
-v0.2.0 was withdrawn. v0.2.2 lets Mac shortcuts enabled in system settings continue to app attribution and fixes retrying after the first permission grant without restarting. See the [macOS guide](docs/MACOS.md) (Chinese) for scope and validation.
-
 ![KeyCrash identifies QQ as the app using Ctrl + Alt + A (Chinese interface)](docs/images/keycrash-screenshot.png)
 
 ## Download and run
@@ -17,7 +15,6 @@ v0.2.0 was withdrawn. v0.2.2 lets Mac shortcuts enabled in system settings conti
 Download `keycrash-v<version>-windows-x64.zip` from [Releases](https://github.com/Yuelioi/keycrash/releases).
 
 Extract the entire archive and run `keycrash.exe`. Keep the other files and the `owner-x86` folder alongside it.
-
 
 For M-series Macs, download `macos-arm64.zip`; for Intel Macs, use `macos-x86_64.zip`. Extract and run `KeyCrash.app`. Mac packages are ad-hoc signed and not notarized.
 
@@ -31,6 +28,6 @@ Press **Esc** to cancel waiting for a key. Use the top-right language menu or **
 
 ## Please note
 
-A normal check does not trigger the full shortcut. **Locating an app may trigger the shortcut's original action** and may request administrator permission on Windows. No registration conflict does not rule out keyboard hooks or other listeners. On Windows, F12 is shown as system-reserved. Temporary registrations by other apps count as conflicts while they remain active.
+A normal check does not trigger the full shortcut. **Locating an app may trigger the shortcut’s original action** and may request administrator permission on Windows.
 
-On Mac, use ⌃ Control / ⌥ Option / ⇧ Shift / ⌘ Command. Choose Locate after checking and allow KeyCrash in Accessibility settings when prompted. Shared hotkeys may allow temporary registration, so Locate is available in that result too. No matching receiver means attribution is unknown; app-local shortcuts and arbitrary listeners are outside this scope.
+On Mac, use ⌃ Control / ⌥ Option / ⇧ Shift / ⌘ Command. Allow KeyCrash in Accessibility settings when prompted. After checking, choose Locate or Check global listeners and select the apps to test. During the listener check, other shortcuts or key remapping in the selected apps may pause briefly; listeners are restored when the check finishes or is cancelled.
