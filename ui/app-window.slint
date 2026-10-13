@@ -706,9 +706,9 @@ export component AppWindow inherits Window {
                 enabled: root.action-enabled;
                 action-color: root.accent;
                 clicked => {
-                    if (root.mode == "waiting-key") {
+                    if (root.mode == "waiting-key" || (root.mode == "locating" && root.is-macos)) {
                         root.cancel-requested();
-                    } else if (root.mode == "occupied" && !root.is-macos) {
+                    } else if (root.mode == "occupied" || (root.mode == "available" && root.is-macos)) {
                         root.locate-owner();
                     } else {
                         root.begin-detection(root.ctrl-selected, root.alt-selected, root.shift-selected, root.win-selected);
@@ -803,7 +803,7 @@ export component AppWindow inherits Window {
                     y: 175px;
                     width: parent.width - 40px;
                     height: 22px;
-                    text: root.is-macos ? (root.language == "en" ? "3  Read the result" : root.language == "ja" ? "3  結果を確認" : "3  查看检测结果") : root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを特定" : "3  定位占用软件";
+                    text: root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを特定" : "3  定位占用软件";
                     color: #11171c;
                     font-size: 13px;
                     font-weight: 650;
@@ -813,7 +813,7 @@ export component AppWindow inherits Window {
                     y: 196px;
                     width: parent.width - 58px;
                     height: 44px;
-                    text: root.is-macos ? (root.language == "en" ? "Checks system shortcuts and hotkey registration. App shortcuts and listeners are outside its scope; the app owner is unknown." : root.language == "ja" ? "システム設定と登録を検査します。アプリ内のキー操作や監視は対象外。使用中のアプリは不明です。" : "检查系统快捷键与热键注册；不涵盖应用内快捷键或监听，暂不定位占用软件。") : root.language == "en" ? "If a registration conflict is found, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "登録の競合があれば「特定」を選びます。ショートカットの操作が実行される場合があります。" : "发现注册冲突后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
+                    text: root.is-macos ? (root.language == "en" ? "After checking, choose Locate and grant Accessibility access. This sends the shortcut, so its action may run." : root.language == "ja" ? "検査後に「特定」を選び、アクセシビリティを許可します。元の操作が実行される場合があります。" : "检测后可点“定位占用软件”，按提示允许辅助功能。定位会触发组合，原动作可能执行。") : root.language == "en" ? "If a registration conflict is found, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "登録の競合があれば「特定」を選びます。ショートカットの操作が実行される場合があります。" : "发现注册冲突后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;

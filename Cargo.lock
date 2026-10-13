@@ -2512,7 +2512,7 @@ dependencies = [
 
 [[package]]
 name = "keycrash"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "block2 0.6.2",
  "objc2 0.6.4",

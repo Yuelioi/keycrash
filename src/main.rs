@@ -19,11 +19,13 @@ mod i18n;
 mod key_capture;
 #[cfg(windows)]
 mod owner_probe;
+#[cfg(target_os = "macos")]
+#[path = "macos/owner_probe.rs"]
+mod owner_probe;
 
 use detector::{EvidenceSource, OwnerAttribution, ProbeReport, ProbeStatus, Shortcut};
 #[cfg(windows)]
 use detector::{shortcut_from_parts, shortcut_from_virtual_key};
-#[cfg(windows)]
 use owner_probe::OwnerProbeResult;
 use slint::{Color, ComponentHandle, SharedString};
 use std::cell::RefCell;
@@ -31,9 +33,7 @@ use std::cell::RefCell;
 use std::ffi::OsString;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
-#[cfg(windows)]
 use std::path::Path;
-#[cfg(windows)]
 use std::process::Command;
 use std::rc::Rc;
 #[cfg(windows)]
@@ -49,7 +49,6 @@ const MODE_AVAILABLE: &str = "available";
 const MODE_OCCUPIED: &str = "occupied";
 const MODE_RESERVED: &str = "reserved";
 const MODE_LOCATING: &str = "locating";
-#[cfg(windows)]
 const MODE_OWNER_FOUND: &str = "owner-found";
 #[cfg(windows)]
 const MODE_UNSUPPORTED: &str = "unsupported";
@@ -59,7 +58,13 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     ui.set_is_macos(cfg!(target_os = "macos"));
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
-    let last_blocked_shortcut = Rc::new(RefCell::new(None));
+    let last_blocked_shortcut = Rc::new(RefCell::new(None::<Shortcut>));
+    #[cfg(target_os = "macos")]
+    let active_probe = Rc::new(RefCell::new(
+        None::<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    ));
+    #[cfg(target_os = "macos")]
+    let probe_worker = Rc::new(RefCell::new(None::<std::thread::JoinHandle<()>>));
     set_idle(&ui);
 
     {
@@ -141,9 +146,57 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
+    #[cfg(target_os = "macos")]
     {
         let weak_ui = ui.as_weak();
+        let last_blocked_shortcut = last_blocked_shortcut.clone();
+        let active_probe = active_probe.clone();
+        let probe_worker = probe_worker.clone();
+        ui.on_locate_owner(move || {
+            let Some(ui) = weak_ui.upgrade() else { return; };
+            if ui.get_mode() == MODE_LOCATING { return; }
+            let Some(shortcut) = last_blocked_shortcut.borrow().clone() else { return; };
+            if !owner_probe::has_permission() {
+                owner_probe::request_permission();
+                set_view(&ui, MODE_OCCUPIED, "需要辅助功能权限",
+                    "在系统设置中允许 KeyCrash，然后返回点击定位。",
+                    &shortcut.label(), "授权前不会发送快捷键", "定位占用软件", color("8B6B16"));
+                let _ = Command::new("/usr/bin/open")
+                    .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+                    .spawn();
+                return;
+            }
+            let cancelled = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            *active_probe.borrow_mut() = Some(cancelled.clone());
+            let shortcut_label = shortcut.label();
+            set_view(&ui, MODE_LOCATING, "正在定位占用软件",
+                "正在观察此组合的接收进程，原动作可能执行。",
+                &shortcut_label, "macOS 快捷键事件", "取消", color("C9342A"));
+            let result_ui = ui.as_weak();
+            if let Some(previous) = probe_worker.borrow_mut().take() {
+                let _ = previous.join();
+            }
+            *probe_worker.borrow_mut() = Some(std::thread::spawn(move || {
+                let report = owner_probe::locate_owner(&shortcut, &cancelled);
+                let _ = slint::invoke_from_event_loop(move || {
+                    if !cancelled.load(std::sync::atomic::Ordering::Relaxed)
+                        && let Some(ui) = result_ui.upgrade() {
+                        apply_owner_report(&ui, &shortcut_label, report);
+                    }
+                });
+            }));
+        });
+    }
+
+    {
+        let weak_ui = ui.as_weak();
+        #[cfg(target_os = "macos")]
+        let active_probe = active_probe.clone();
         ui.on_cancel_requested(move || {
+            #[cfg(target_os = "macos")]
+            if let Some(cancelled) = active_probe.borrow_mut().take() {
+                cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
             if let Some(ui) = weak_ui.upgrade() {
                 set_idle(&ui);
             }
@@ -159,7 +212,6 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
-    #[cfg(windows)]
     {
         let weak_ui = ui.as_weak();
         ui.on_open_owner_location(move || {
@@ -215,7 +267,17 @@ fn main() -> Result<(), slint::PlatformError> {
         .ok_or_else(|| slint::PlatformError::Other("Could not install local key capture".into()))?
     };
 
-    ui.run()
+    let result = ui.run();
+    #[cfg(target_os = "macos")]
+    if let Some(cancelled) = active_probe.borrow_mut().take() {
+        cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    #[cfg(target_os = "macos")]
+    if let Some(worker) = probe_worker.borrow_mut().take() {
+        // Finish any paired key-up and tear down the event tap before exit.
+        let _ = worker.join();
+    }
+    result
 }
 
 #[cfg(windows)]
@@ -275,7 +337,10 @@ fn detect_shortcut(
     shortcut: Shortcut,
 ) {
     let report = detector::probe_shortcut(&shortcut);
-    if report.status == ProbeStatus::Blocked && report.system_rule.is_none() {
+    if (report.status == ProbeStatus::Blocked
+        || (cfg!(target_os = "macos") && report.status == ProbeStatus::Available))
+        && report.system_rule.is_none()
+    {
         *last_blocked_shortcut.borrow_mut() = Some(shortcut.clone());
     } else {
         *last_blocked_shortcut.borrow_mut() = None;
@@ -294,13 +359,17 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
                 "未发现注册冲突"
             },
             if cfg!(target_os = "macos") {
-                "临时注册已释放；应用内快捷键与监听不在检测范围。"
+                "可临时注册；定位会触发组合，用于检查共享热键。"
             } else {
                 "其他软件仍可能监听此键；本次临时注册已释放。"
             },
             shortcut_label,
             &evidence_label(&report),
-            "再测一次",
+            if cfg!(target_os = "macos") {
+                "定位占用软件"
+            } else {
+                "再测一次"
+            },
             color("007A7E"),
         ),
         ProbeStatus::Blocked => {
@@ -320,7 +389,7 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
                 blocked_detail(&report),
                 shortcut_label,
                 &evidence_label(&report),
-                if report.system_rule.is_some() || cfg!(target_os = "macos") {
+                if report.system_rule.is_some() {
                     "再测一次"
                 } else {
                     "定位占用软件"
@@ -359,11 +428,7 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
 
 fn blocked_detail(report: &ProbeReport) -> &'static str {
     report.system_rule.map_or(
-        if cfg!(target_os = "macos") {
-            "注册冲突已确认；macOS 暂不支持定位占用软件。"
-        } else {
-            "冲突已确认；定位会真实触发组合，原动作可能执行。"
-        },
+        "冲突已确认；定位会真实触发组合，原动作可能执行。",
         |rule| rule.explanation(),
     )
 }
@@ -444,6 +509,86 @@ fn set_owner_error(ui: &AppWindow, error: &str) {
         "重新检测",
         color("A33B32"),
     );
+}
+
+#[cfg(target_os = "macos")]
+fn apply_owner_report(ui: &AppWindow, shortcut_label: &str, report: OwnerProbeResult) {
+    match report {
+        OwnerProbeResult::Found(owners) => {
+            let names = owners
+                .iter()
+                .map(|owner| {
+                    let path = Path::new(&owner.path);
+                    path.ancestors()
+                        .find(|p| p.extension().is_some_and(|e| e == "app"))
+                        .and_then(Path::file_stem)
+                        .or_else(|| path.file_name())
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| format!("PID {}", owner.pid))
+                })
+                .collect::<Vec<_>>()
+                .join("、");
+            let detail = owners
+                .iter()
+                .map(|o| format!("PID {} · {}", o.pid, o.path))
+                .collect::<Vec<_>>()
+                .join("\n");
+            set_view(
+                ui,
+                MODE_OWNER_FOUND,
+                &format!("{names}占用了它"),
+                &detail,
+                shortcut_label,
+                "macOS 热键接收事件 · 已匹配本次组合",
+                "再测一次",
+                color("007A7E"),
+            );
+            if owners.len() == 1 {
+                ui.set_owner_path(owners[0].path.clone().into());
+            }
+        }
+        OwnerProbeResult::NotFound => set_view(
+            ui,
+            MODE_ERROR,
+            "没有观察到占用软件",
+            "未收到匹配的热键事件；目标可能忽略模拟输入，或占用已释放。",
+            shortcut_label,
+            "macOS 快捷键事件 · 未匹配",
+            "重新检测",
+            color("8B6B16"),
+        ),
+        OwnerProbeResult::PermissionRequired => set_view(
+            ui,
+            MODE_OCCUPIED,
+            "需要辅助功能权限",
+            "在系统设置中允许 KeyCrash，然后返回点击定位。",
+            shortcut_label,
+            "授权前不会发送快捷键",
+            "定位占用软件",
+            color("8B6B16"),
+        ),
+        OwnerProbeResult::Error(error) => set_view(
+            ui,
+            MODE_ERROR,
+            "定位没有完成",
+            error,
+            shortcut_label,
+            "macOS 快捷键事件",
+            "重新检测",
+            color("A33B32"),
+        ),
+        OwnerProbeResult::Cancelled => set_idle(ui),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn open_file_location(path: &Path) -> Result<(), String> {
+    Command::new("/usr/bin/open")
+        .arg("-R")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 fn evidence_label(report: &ProbeReport) -> String {
@@ -562,7 +707,7 @@ fn set_view(
     ui.set_shortcut_text(SharedString::from(i18n::text(language, shortcut)));
     ui.set_evidence_text(SharedString::from(i18n::text(language, evidence)));
     ui.set_action_text(SharedString::from(i18n::text(language, action)));
-    ui.set_action_enabled(mode != MODE_LOCATING);
+    ui.set_action_enabled(mode != MODE_LOCATING || cfg!(target_os = "macos"));
     ui.set_accent(accent);
     ui.set_owner_path(SharedString::new());
 }
@@ -575,7 +720,7 @@ fn relocalize_view(ui: &AppWindow, language: i18n::Language) {
         ui.get_state_title().as_str(),
     )));
     let current_detail = ui.get_state_detail();
-    let detail = if owner_error {
+    let detail = if owner_error && cfg!(windows) {
         "深度定位组件返回错误，请再试一次。"
     } else {
         current_detail.as_str()

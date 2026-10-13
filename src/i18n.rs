@@ -34,6 +34,81 @@ macro_rules! m {
 
 const MESSAGES: &[Message] = &[
     m!(
+        "没有观察到占用软件",
+        "No receiving app observed",
+        "受信するアプリが見つかりませんでした"
+    ),
+    m!(
+        "可临时注册；定位会触发组合，用于检查共享热键。",
+        "Registration succeeded. Locate sends the shortcut to check shared hotkeys.",
+        "一時登録に成功。「特定」は共有ホットキーを確認するため組み合わせを送信します。"
+    ),
+    m!(
+        "需要辅助功能权限",
+        "Accessibility permission required",
+        "アクセシビリティの許可が必要です"
+    ),
+    m!(
+        "在系统设置中允许 KeyCrash，然后返回点击定位。",
+        "Allow KeyCrash in System Settings, then return and choose Locate.",
+        "システム設定で KeyCrash を許可し、戻って「特定」を押してください。"
+    ),
+    m!(
+        "授权前不会发送快捷键",
+        "No shortcut sent before permission is granted",
+        "許可前にはショートカットを送信しません"
+    ),
+    m!(
+        "正在观察此组合的接收进程，原动作可能执行。",
+        "Observing the receiving process. The shortcut action may run.",
+        "受信プロセスを確認しています。元の操作が実行される場合があります。"
+    ),
+    m!(
+        "macOS 快捷键事件",
+        "macOS shortcut events",
+        "macOS ショートカットイベント"
+    ),
+    m!(
+        "macOS 热键接收事件 · 已匹配本次组合",
+        "macOS hotkey receiver · Matched this shortcut",
+        "macOS ホットキー受信先 · 今回の組み合わせと一致"
+    ),
+    m!(
+        "macOS 快捷键事件 · 未匹配",
+        "macOS shortcut events · No match",
+        "macOS ショートカットイベント · 一致なし"
+    ),
+    m!(
+        "未收到匹配的热键事件；目标可能忽略模拟输入，或占用已释放。",
+        "No matching hotkey event. The app may ignore synthetic input or have released the shortcut.",
+        "一致するイベントがありません。疑似入力が無視されたか、登録が解放された可能性があります。"
+    ),
+    m!(
+        "请松开键盘上的按键后再定位。",
+        "Release held keys before locating the app.",
+        "押しているキーを離してから特定してください。"
+    ),
+    m!(
+        "无法观察快捷键事件，请检查辅助功能权限。",
+        "Cannot observe shortcut events. Check Accessibility permission.",
+        "イベントを確認できません。アクセシビリティの許可を確認してください。"
+    ),
+    m!(
+        "无法创建快捷键观察器。",
+        "Could not create the shortcut observer.",
+        "イベント監視を開始できません。"
+    ),
+    m!(
+        "无法创建快捷键输入。",
+        "Could not create shortcut input.",
+        "ショートカット入力を作成できません。"
+    ),
+    m!(
+        "事件观察中断，请重试。",
+        "Event observation was interrupted. Try again.",
+        "イベント監視が中断されました。再試行してください。"
+    ),
+    m!(
         "此组合可临时注册",
         "Temporary registration succeeded",
         "一時登録に成功しました"
@@ -47,11 +122,6 @@ const MESSAGES: &[Message] = &[
         "点选 ⌃、⌥、⇧、⌘；开始后只按一个目标键。",
         "Select ⌃, ⌥, ⇧, or ⌘, then press only the target key.",
         "⌃、⌥、⇧、⌘ を選び、対象キーだけを押します。"
-    ),
-    m!(
-        "注册冲突已确认；macOS 暂不支持定位占用软件。",
-        "Conflict found; macOS cannot identify the app.",
-        "登録の競合を確認。macOS では使用中のアプリの特定は未対応です。"
     ),
     m!(
         "此组合已在 macOS 系统快捷键中启用。",

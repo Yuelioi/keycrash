@@ -44,19 +44,17 @@ def main():
             print(json.dumps(ready), flush=True)
             if ready.get("status") != 0:
                 raise RuntimeError("Fixture could not register test shortcut")
-            owners.append((owner, key))
-        for owner, key in owners:
-            query = subprocess.run([fixture, "query", str(owner.pid)],
+            owners.append((owner, key, ready["native_id"]))
+        for owner, key, identifier in owners:
+            query = subprocess.run([fixture, "query", str(owner.pid), str(identifier)],
                                    text=True, capture_output=True, timeout=20)
             print(query.stdout, end="", flush=True)
             if query.returncode:
                 raise RuntimeError(f"Native query failed: {query.returncode}")
             result = json.loads(query.stdout)
             # An observation of the OTHER owner's key would invalidate attribution.
-            keys = {entry["key"] for entry in result["entries"]}
-            other_key = 80 if key == 79 else 79
-            if key not in keys or other_key in keys:
-                raise AssertionError(f"Cross-process attribution unproven: expected {key}, observed {keys}")
+            if result["return"] != 0 or result["key"] != key or result["flags"] != 0x9E0000:
+                raise AssertionError(f"Cross-process attribution unproven: expected key {key}, observed {result}")
     print("PASS: native query distinguished independent owners; release-after-query and wider UID coverage still need validation")
 
 

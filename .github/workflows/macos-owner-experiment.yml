@@ -1,4 +1,4 @@
-name: macOS owner experiment
+name: macOS attribution fixtures
 
 on:
   workflow_dispatch:
@@ -29,10 +29,9 @@ jobs:
           clang -fobjc-arc -Wall -Wextra -Wno-deprecated-declarations \
             -framework Cocoa -framework Carbon examples/macos-owner-query.m \
             -o .task/macos-owner-query/owner-query
-      - name: Verify cross-process attribution hypothesis
+      - name: Compile stable permission host
         run: |
-          sw_vers
-          python3 scripts/test-macos-owner-query.py .task/macos-owner-query/owner-query
-      - name: Verify annotated event target hypothesis
-        if: ${{ !cancelled() }}
-        run: python3 scripts/test-macos-owner-events.py .task/macos-owner-query/owner-query --trigger-fixture
+          clang -fobjc-arc -Wall -Wextra -framework Foundation -framework ApplicationServices \
+            examples/macos-diagnostics-launcher.m -o .task/macos-owner-query/diagnostics-launcher
+      # TCC authorization and registered-hotkey delivery require desktop acceptance.
+      # Product Rust backend compilation is covered by macos.yml on both architectures.

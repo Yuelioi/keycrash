@@ -6,9 +6,9 @@
 
 KeyCrash checks for global hotkey registration conflicts and tries to identify the app using it.
 
-For **Windows 10 / 11 (64-bit)**. No installation needed. Available in Chinese, English, and Japanese.
+For **Windows 10 / 11 (64-bit) and macOS**. Available in Chinese, English, and Japanese.
 
-**v0.2.0 has been withdrawn** because macOS app attribution was incomplete. The current public version is [v0.1.2 for Windows](https://github.com/Yuelioi/keycrash/releases/tag/v0.1.2). macOS support remains in development and will be released after attribution and native desktop acceptance pass. See the [macOS development guide](docs/MACOS.md) (Chinese).
+v0.2.0 was withdrawn. v0.2.1 adds Mac app attribution for exclusive and shared hotkeys. See the [macOS guide](docs/MACOS.md) (Chinese) for scope and validation.
 
 ![KeyCrash identifies QQ as the app using Ctrl + Alt + A (Chinese interface)](docs/images/keycrash-screenshot.png)
 
@@ -17,6 +17,9 @@ For **Windows 10 / 11 (64-bit)**. No installation needed. Available in Chinese, 
 Download `keycrash-v<version>-windows-x64.zip` from [Releases](https://github.com/Yuelioi/keycrash/releases).
 
 Extract the entire archive and run `keycrash.exe`. Keep the other files and the `owner-x86` folder alongside it.
+
+
+For M-series Macs, download `macos-arm64.zip`; for Intel Macs, use `macos-x86_64.zip`. Extract and run `KeyCrash.app`. Mac packages are ad-hoc signed and not notarized.
 
 ## How to use
 
@@ -28,4 +31,6 @@ Press **Esc** to cancel waiting for a key. Use the top-right language menu or **
 
 ## Please note
 
-A normal check does not trigger the full shortcut. **Locating an app may trigger the shortcut's original action** and may request administrator permission. No registration conflict does not rule out keyboard hooks or other listeners. F12 is shown as system-reserved. Temporary registrations by other apps count as conflicts while they remain active.
+A normal check does not trigger the full shortcut. **Locating an app may trigger the shortcut's original action** and may request administrator permission on Windows. No registration conflict does not rule out keyboard hooks or other listeners. On Windows, F12 is shown as system-reserved. Temporary registrations by other apps count as conflicts while they remain active.
+
+On Mac, use ⌃ Control / ⌥ Option / ⇧ Shift / ⌘ Command. Choose Locate after checking and allow KeyCrash in Accessibility settings when prompted. Shared hotkeys may allow temporary registration, so Locate is available in that result too. No matching receiver means attribution is unknown; app-local shortcuts and arbitrary listeners are outside this scope.
