@@ -8,3 +8,4 @@
 # Local Flightdeck work records
 /flightdeck/
 /.task/
+/dist/

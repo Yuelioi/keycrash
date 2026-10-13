@@ -1,6 +1,8 @@
 # 发布 KeyCrash
 
-Release Action 会运行 workspace 测试、构建 Windows x64 主程序和 x86 辅助组件、验证程序图标，然后上传 `keycrash-v<版本号>-windows-x64.zip` 并生成 GitHub Release 说明。带预发布后缀的版本会标记为 prerelease。
+Release Action 并行构建 Windows x64（含 x86 辅助组件）、Mac arm64 和 Mac x86_64。Windows 运行 workspace 测试并验证程序图标；Mac 运行主包测试、编译原生 fixture、验证 `.app` 架构与 ad-hoc 签名。全部成功后统一上传三个 ZIP 并生成 GitHub Release。带预发布后缀的版本会标记为 prerelease。
+
+Mac 包尚未做 Developer ID 签名或 Apple 公证，Release 说明必须保留此限制及实机验收状态。普通 CI 构建不等于桌面快捷键和 UI 已验收。
 
 ## 发布新版本
 

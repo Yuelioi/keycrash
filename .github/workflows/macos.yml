@@ -1,0 +1,68 @@
+name: macOS CI
+
+on:
+  push:
+    branches: ['**']
+    paths: ['src/**', 'ui/**', 'assets/**', 'examples/**', 'scripts/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', '.github/workflows/macos.yml']
+  pull_request:
+    paths: ['src/**', 'ui/**', 'assets/**', 'examples/**', 'scripts/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', '.github/workflows/macos.yml']
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            arch: x86_64
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/.task/macos-ci/target
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+      - name: Validate version tag
+        if: startsWith(inputs.ref || github.ref, 'refs/tags/')
+        env:
+          BUILD_REF: ${{ inputs.ref || github.ref }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          metadata = json.loads(subprocess.check_output(["cargo", "metadata", "--locked", "--no-deps", "--format-version", "1"]))
+          version = next(p["version"] for p in metadata["packages"] if p["name"] == "keycrash")
+          assert os.environ["BUILD_REF"] == f"refs/tags/v{version}", "Tag must match Cargo.toml"
+          PY
+      - name: Test application and compile native fixture
+        run: |
+          cargo +stable test --locked --release -p keycrash --target '${{ matrix.target }}'
+          cargo +stable build --locked --release -p keycrash --example macos-hotkey-fixture --target '${{ matrix.target }}'
+      - name: Build and validate application bundle
+        env:
+          RUSTUP_TOOLCHAIN: stable
+        run: python3 scripts/build-macos.py --arch '${{ matrix.arch }}' --target-dir "$CARGO_TARGET_DIR"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keycrash-macos-${{ matrix.arch }}
+          path: dist/keycrash-*-macos-${{ matrix.arch }}.zip
+          if-no-files-found: error
+      # Native conflict checks need a logged-in desktop. CI compiles the fixture;
+      # it does not replace the Mac acceptance checklist.

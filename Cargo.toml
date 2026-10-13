@@ -1,11 +1,12 @@
 [package]
 name = "keycrash"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 build = "build.rs"
 
 [workspace]
 resolver = "3"
+default-members = ["."]
 members = [
     ".",
     "native/hotkey-fixture",
@@ -21,6 +22,12 @@ slint = { version = "=1.17.1", default-features = false, features = [
     "accessibility",
     "compat-1-2",
 ] }
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+block2 = "0.6.2"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSEvent", "block2"] }
+
+[target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_System_Registry",

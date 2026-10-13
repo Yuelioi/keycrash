@@ -79,53 +79,7 @@ impl ActionKeyParseError {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ProbeStatus {
-    Available,
-    Blocked,
-    Error,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EvidenceSource {
-    RuntimeProbe,
-    SystemRule,
-    SystemError,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OwnerAttribution {
-    NotApplicable,
-    KnownSystem,
-    Unknown,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum SystemRule {
-    SecureAttention,
-    LockWorkstation,
-    DebuggerF12,
-}
-
-impl SystemRule {
-    pub fn explanation(self) -> &'static str {
-        match self {
-            Self::SecureAttention => "Ctrl + Alt + Delete 由 Windows 安全桌面保留",
-            Self::LockWorkstation => "Win + L 由 Windows 锁屏功能保留",
-            Self::DebuggerF12 => "F12 为调试器保留，请换一个键。",
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ProbeReport {
-    pub status: ProbeStatus,
-    pub source: EvidenceSource,
-    pub owner: OwnerAttribution,
-    pub code: Option<u32>,
-    pub system_rule: Option<SystemRule>,
-    pub detail: Option<&'static str>,
-}
+pub use crate::report::*;
 
 pub fn shortcut_from_parts(
     ctrl: bool,
@@ -337,7 +291,7 @@ pub fn probe_shortcut(shortcut: &Shortcut) -> ProbeReport {
                     status: ProbeStatus::Blocked,
                     source: EvidenceSource::RuntimeProbe,
                     owner: OwnerAttribution::Unknown,
-                    code: Some(code),
+                    code: Some(i64::from(code)),
                     system_rule: None,
                     detail: None,
                 }
@@ -346,7 +300,7 @@ pub fn probe_shortcut(shortcut: &Shortcut) -> ProbeReport {
                     status: ProbeStatus::Error,
                     source: EvidenceSource::SystemError,
                     owner: OwnerAttribution::NotApplicable,
-                    code: Some(code),
+                    code: Some(i64::from(code)),
                     system_rule: None,
                     detail: None,
                 }

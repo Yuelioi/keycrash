@@ -6,7 +6,9 @@
 
 快捷键突然没反应？KeyCrash 帮你检查组合键是否存在注册冲突，并尝试找出占用它的软件。
 
-适用于 **Windows 10 / 11（64 位）**，免安装，支持中文、英文和日文。
+适用于 **Windows 10 / 11（64 位）**，并提供 **macOS 预览版**；支持中文、英文和日文。
+
+Mac mini M4 / M 系列下载 `keycrash-v<版本号>-macos-arm64.zip`，Intel Mac 下载 `macos-x86_64.zip`；解压后运行 `KeyCrash.app`。Mac 包仅作 ad-hoc 签名，未做 Apple 公证，仍待实机验收。构建、检测范围与验证步骤见 [macOS 说明](docs/MACOS.md)。Mac 首版检查系统快捷键和注册冲突，暂不定位占用软件。
 
 ![KeyCrash 检测到 QQ 占用了 Ctrl + Alt + A](docs/images/keycrash-screenshot.png)
 

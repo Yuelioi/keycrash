@@ -8,6 +8,8 @@ KeyCrash checks for global hotkey registration conflicts and tries to identify t
 
 For **Windows 10 / 11 (64-bit)**. No installation needed. Available in Chinese, English, and Japanese.
 
+macOS preview builds are provided for Apple Silicon (`macos-arm64`) and Intel (`macos-x86_64`). Extract the ZIP and open `KeyCrash.app`. These builds use ad-hoc signatures and are not notarized; native desktop acceptance is still pending. See the [macOS build and verification guide](docs/MACOS.md) (Chinese). The Mac version checks system shortcuts and registration conflicts; app attribution is not supported.
+
 ![KeyCrash identifies QQ as the app using Ctrl + Alt + A (Chinese interface)](docs/images/keycrash-screenshot.png)
 
 ## Download and run

@@ -34,6 +34,51 @@ macro_rules! m {
 
 const MESSAGES: &[Message] = &[
     m!(
+        "此组合可临时注册",
+        "Temporary registration succeeded",
+        "一時登録に成功しました"
+    ),
+    m!(
+        "临时注册已释放；应用内快捷键与监听不在检测范围。",
+        "Released; app shortcuts and listeners are not checked.",
+        "登録は解放済み。アプリ内の操作や監視は対象外です。"
+    ),
+    m!(
+        "点选 ⌃、⌥、⇧、⌘；开始后只按一个目标键。",
+        "Select ⌃, ⌥, ⇧, or ⌘, then press only the target key.",
+        "⌃、⌥、⇧、⌘ を選び、対象キーだけを押します。"
+    ),
+    m!(
+        "注册冲突已确认；macOS 暂不支持定位占用软件。",
+        "Conflict found; macOS cannot identify the app.",
+        "登録の競合を確認。macOS では使用中のアプリの特定は未対応です。"
+    ),
+    m!(
+        "此组合已在 macOS 系统快捷键中启用。",
+        "This combination is enabled in macOS system shortcuts.",
+        "macOS のシステム設定で有効なショートカットです。"
+    ),
+    m!(
+        "macOS 系统快捷键 · 未尝试注册",
+        "macOS system shortcut · No registration attempted",
+        "macOS のシステム設定 · 登録は未実行"
+    ),
+    m!(
+        "无法读取 macOS 系统快捷键，请重试。",
+        "Could not read macOS system shortcuts. Try again.",
+        "macOS のシステム設定を読み取れません。再試行してください。"
+    ),
+    m!(
+        "临时热键释放失败，请退出 KeyCrash 后重试。",
+        "Could not release the test hotkey. Quit KeyCrash and retry.",
+        "一時登録を解放できません。KeyCrash を終了して再試行してください。"
+    ),
+    m!(
+        "macOS 无法注册此组合；请换用 ⌘ 或 ⌃ 后重试。",
+        "macOS rejected registration. Try a combination with ⌘ or ⌃.",
+        "macOS が登録を拒否しました。⌘ または ⌃ で再試行してください。"
+    ),
+    m!(
         "系统保留快捷键",
         "System-reserved shortcut",
         "システム予約のショートカット"
@@ -220,6 +265,21 @@ pub fn text(language: Language, source: &str) -> String {
 }
 
 fn translate_dynamic(language: Language, source: &str) -> Option<String> {
+    if let Some(code) = extract_any(
+        source,
+        &[
+            ("macOS 系统错误 · ", ""),
+            ("macOS system error · ", ""),
+            ("macOS システムエラー · ", ""),
+        ],
+    ) {
+        return Some(match language {
+            Language::Zh => format!("macOS 系统错误 · {code}"),
+            Language::En => format!("macOS system error · {code}"),
+            Language::Ja => format!("macOS システムエラー · {code}"),
+        });
+    }
+
     if let Some(value) = source
         .strip_prefix("无法识别目标键“")
         .and_then(|value| value.strip_suffix("”，请换一个键。"))
@@ -310,6 +370,26 @@ fn extract_any<'a>(source: &'a str, patterns: &[(&str, &str)]) -> Option<&'a str
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn macos_error_codes_survive_language_switching() {
+        assert_eq!(
+            text(Language::En, "macOS 系统错误 · -9868"),
+            "macOS system error · -9868"
+        );
+        assert_eq!(
+            text(Language::Ja, "macOS system error · -9868"),
+            "macOS システムエラー · -9868"
+        );
+        assert_eq!(
+            text(Language::Zh, "macOS システムエラー · -9868"),
+            "macOS 系统错误 · -9868"
+        );
+        assert_eq!(
+            text(Language::En, "此组合可临时注册"),
+            "Temporary registration succeeded"
+        );
+    }
 
     #[test]
     fn translates_core_copy_in_all_languages() {

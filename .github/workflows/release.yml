@@ -18,9 +18,12 @@ permissions:
   contents: read
 
 jobs:
-  release:
-    permissions:
-      contents: write
+  macos:
+    uses: ./.github/workflows/macos.yml
+    with:
+      ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+  windows:
     runs-on: windows-2022
     timeout-minutes: 30
     defaults:
@@ -57,7 +60,7 @@ jobs:
           $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Cargo metadata failed' }
           $version = ($metadata.packages | Where-Object name -eq 'keycrash').version
-          $bundleRoot = Join-Path $env:RUNNER_TEMP 'keycrash-bundle'
+          $bundleRoot = Join-Path $env:GITHUB_WORKSPACE '.task/release/windows-bundle'
           New-Item -ItemType Directory -Path (Join-Path $bundleRoot 'owner-x86') -Force | Out-Null
           foreach ($file in @('keycrash.exe', 'keycrash-owner-probe.exe', 'keycrash_owner_hook.dll', 'owner-x86/keycrash-owner-probe.exe', 'owner-x86/keycrash_owner_hook.dll')) {
             Copy-Item -LiteralPath (Join-Path $releaseRoot $file) -Destination (Join-Path $bundleRoot $file)
@@ -65,17 +68,53 @@ jobs:
           Copy-Item -LiteralPath 'README.md', 'README.en.md', 'README.ja.md' -Destination $bundleRoot
           New-Item -ItemType Directory -Path (Join-Path $bundleRoot 'docs/images') -Force | Out-Null
           Copy-Item -LiteralPath 'docs/images/keycrash-screenshot.png' -Destination (Join-Path $bundleRoot 'docs/images')
-          $archive = Join-Path $env:RUNNER_TEMP "keycrash-v$version-windows-x64.zip"
+          Copy-Item -LiteralPath 'docs/MACOS.md' -Destination (Join-Path $bundleRoot 'docs')
+          $archive = Join-Path $env:GITHUB_WORKSPACE ".task/release/keycrash-v$version-windows-x64.zip"
           Compress-Archive -Path (Join-Path $bundleRoot '*') -DestinationPath $archive -Force
           "archive=$archive" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keycrash-windows-x64
+          path: ${{ steps.bundle.outputs.archive }}
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, macos]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: keycrash-*
+          merge-multiple: true
+          path: dist
+      - name: Validate release assets
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          tag = os.environ["RELEASE_TAG"]
+          expected = {f"keycrash-{tag}-{platform}.zip" for platform in ["windows-x64", "macos-arm64", "macos-x86_64"]}
+          actual = {p.name for p in Path("dist").iterdir()}
+          assert actual == expected, (expected, actual)
+          assert all(p.stat().st_size > 0 for p in Path("dist").iterdir())
+          PY
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_ARCHIVE: ${{ steps.bundle.outputs.archive }}
         run: |
-          $releaseArgs = @('release', 'create', $env:RELEASE_TAG, $env:RELEASE_ARCHIVE,
-            '--verify-tag', '--title', "KeyCrash $env:RELEASE_TAG", '--generate-notes')
-          if ($env:RELEASE_TAG.Contains('-')) { $releaseArgs += '--prerelease' }
-          gh @releaseArgs
-          if ($LASTEXITCODE -ne 0) { throw 'GitHub Release publication failed' }
+          cat > release-notes.md <<'EOF'
+          新增 macOS 系统快捷键与注册冲突检查，支持 ⌃ / ⌥ / ⇧ / ⌘ 和三语言界面。
+
+          - Mac mini M4 / M 系列请下载 `macos-arm64`；Intel Mac 请下载 `macos-x86_64`。
+          - Mac 应用仅做 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证；真实桌面验收仍待完成。
+          - Mac 首版不定位占用软件；注册成功不能排除应用内快捷键或其他监听。
+          - Windows 包保持现有检测与软件定位能力。
+          EOF
+          args=(release create "$RELEASE_TAG" dist/*.zip --verify-tag --title "KeyCrash $RELEASE_TAG" --generate-notes --notes-file release-notes.md)
+          if [[ "$RELEASE_TAG" == *-* ]]; then args+=(--prerelease); fi
+          gh "${args[@]}"

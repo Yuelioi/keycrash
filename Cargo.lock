@@ -2512,8 +2512,11 @@ dependencies = [
 
 [[package]]
 name = "keycrash"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
+ "block2 0.6.2",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
  "slint",
  "slint-build",
  "windows",

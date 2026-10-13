@@ -1,23 +1,44 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(windows)]
 mod detector;
+#[cfg(target_os = "macos")]
+#[path = "macos/detector.rs"]
+mod detector;
+#[cfg(target_os = "macos")]
+#[path = "macos/capture.rs"]
+mod mac_capture;
+#[cfg(any(target_os = "macos", test))]
+#[path = "macos/keys.rs"]
+mod mac_keys;
+mod report;
+#[cfg(not(any(windows, target_os = "macos")))]
+compile_error!("KeyCrash supports Windows and macOS");
 mod i18n;
+#[cfg(windows)]
 mod key_capture;
+#[cfg(windows)]
 mod owner_probe;
 
-use detector::{
-    EvidenceSource, OwnerAttribution, ProbeReport, ProbeStatus, Shortcut, shortcut_from_parts,
-    shortcut_from_virtual_key,
-};
+use detector::{EvidenceSource, OwnerAttribution, ProbeReport, ProbeStatus, Shortcut};
+#[cfg(windows)]
+use detector::{shortcut_from_parts, shortcut_from_virtual_key};
+#[cfg(windows)]
 use owner_probe::OwnerProbeResult;
 use slint::{Color, ComponentHandle, SharedString};
 use std::cell::RefCell;
+#[cfg(windows)]
 use std::ffi::OsString;
+#[cfg(windows)]
 use std::os::windows::process::CommandExt;
+#[cfg(windows)]
 use std::path::Path;
+#[cfg(windows)]
 use std::process::Command;
 use std::rc::Rc;
+#[cfg(windows)]
 use std::thread;
+#[cfg(windows)]
 use std::time::Duration;
 
 slint::include_modules!();
@@ -28,12 +49,15 @@ const MODE_AVAILABLE: &str = "available";
 const MODE_OCCUPIED: &str = "occupied";
 const MODE_RESERVED: &str = "reserved";
 const MODE_LOCATING: &str = "locating";
+#[cfg(windows)]
 const MODE_OWNER_FOUND: &str = "owner-found";
+#[cfg(windows)]
 const MODE_UNSUPPORTED: &str = "unsupported";
 const MODE_ERROR: &str = "error";
 
 fn main() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
+    ui.set_is_macos(cfg!(target_os = "macos"));
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
     let last_blocked_shortcut = Rc::new(RefCell::new(None));
     set_idle(&ui);
@@ -61,6 +85,7 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
+    #[cfg(windows)]
     {
         let weak_ui = ui.as_weak();
         let last_blocked_shortcut = last_blocked_shortcut.clone();
@@ -89,6 +114,7 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
+    #[cfg(windows)]
     {
         let weak_ui = ui.as_weak();
         let last_blocked_shortcut = last_blocked_shortcut.clone();
@@ -133,6 +159,7 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
+    #[cfg(windows)]
     {
         let weak_ui = ui.as_weak();
         ui.on_open_owner_location(move || {
@@ -153,11 +180,45 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
+    #[cfg(windows)]
     let _action_key_fallback = install_action_key_fallback(&ui, last_blocked_shortcut);
+
+    #[cfg(target_os = "macos")]
+    let _capture = {
+        let armed_ui = ui.as_weak();
+        let result_ui = ui.as_weak();
+        mac_capture::install(
+            move || {
+                armed_ui
+                    .upgrade()
+                    .is_some_and(|ui| ui.get_mode() == MODE_WAITING_KEY)
+            },
+            move |key_code, characters| {
+                let Some(ui) = result_ui.upgrade() else {
+                    return;
+                };
+                if key_code == 0x35 {
+                    ui.invoke_cancel_requested();
+                    return;
+                }
+                let shortcut = detector::Shortcut::from_native(
+                    ui.get_ctrl_selected(),
+                    ui.get_alt_selected(),
+                    ui.get_shift_selected(),
+                    ui.get_win_selected(),
+                    key_code,
+                    characters,
+                );
+                detect_shortcut(&ui, &last_blocked_shortcut, shortcut);
+            },
+        )
+        .ok_or_else(|| slint::PlatformError::Other("Could not install local key capture".into()))?
+    };
 
     ui.run()
 }
 
+#[cfg(windows)]
 fn install_action_key_fallback(
     ui: &AppWindow,
     last_blocked_shortcut: Rc<RefCell<Option<Shortcut>>>,
@@ -227,8 +288,16 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
         ProbeStatus::Available => set_view(
             ui,
             MODE_AVAILABLE,
-            "未发现注册冲突",
-            "其他软件仍可能监听此键；本次临时注册已释放。",
+            if cfg!(target_os = "macos") {
+                "此组合可临时注册"
+            } else {
+                "未发现注册冲突"
+            },
+            if cfg!(target_os = "macos") {
+                "临时注册已释放；应用内快捷键与监听不在检测范围。"
+            } else {
+                "其他软件仍可能监听此键；本次临时注册已释放。"
+            },
             shortcut_label,
             &evidence_label(&report),
             "再测一次",
@@ -251,7 +320,7 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
                 blocked_detail(&report),
                 shortcut_label,
                 &evidence_label(&report),
-                if report.system_rule.is_some() {
+                if report.system_rule.is_some() || cfg!(target_os = "macos") {
                     "再测一次"
                 } else {
                     "定位占用软件"
@@ -269,7 +338,16 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
                 ui,
                 MODE_ERROR,
                 "检测没有完成",
-                &format!("Windows 返回了系统错误 {code}，请再试一次。"),
+                &report.detail.map(str::to_owned).unwrap_or_else(|| {
+                    format!(
+                        "{} 返回了系统错误 {code}，请再试一次。",
+                        if cfg!(target_os = "macos") {
+                            "macOS"
+                        } else {
+                            "Windows"
+                        }
+                    )
+                }),
                 shortcut_label,
                 &evidence_label(&report),
                 "重新检测",
@@ -281,11 +359,16 @@ fn apply_report(ui: &AppWindow, shortcut_label: &str, report: ProbeReport) {
 
 fn blocked_detail(report: &ProbeReport) -> &'static str {
     report.system_rule.map_or(
-        "冲突已确认；定位会真实触发组合，原动作可能执行。",
+        if cfg!(target_os = "macos") {
+            "注册冲突已确认；macOS 暂不支持定位占用软件。"
+        } else {
+            "冲突已确认；定位会真实触发组合，原动作可能执行。"
+        },
         |rule| rule.explanation(),
     )
 }
 
+#[cfg(windows)]
 fn set_locating_owner(ui: &AppWindow, shortcut_label: &str) {
     set_view(
         ui,
@@ -299,6 +382,7 @@ fn set_locating_owner(ui: &AppWindow, shortcut_label: &str) {
     );
 }
 
+#[cfg(windows)]
 fn apply_owner_report(ui: &AppWindow, shortcut_label: &str, report: OwnerProbeResult) {
     match report {
         OwnerProbeResult::Found {
@@ -343,6 +427,7 @@ fn apply_owner_report(ui: &AppWindow, shortcut_label: &str, report: OwnerProbeRe
     }
 }
 
+#[cfg(windows)]
 fn set_owner_error(ui: &AppWindow, error: &str) {
     let detail = if i18n::Language::from_code(ui.get_language().as_str()) == i18n::Language::Zh {
         error
@@ -370,12 +455,23 @@ fn evidence_label(report: &ProbeReport) -> String {
             let code = report.code.unwrap_or_default();
             format!("运行时探测 · 错误 {code} · owner 未知")
         }
-        (EvidenceSource::SystemRule, OwnerAttribution::KnownSystem) => {
-            "Windows 系统规则 · 未尝试注册".into()
+        (EvidenceSource::SystemRule, OwnerAttribution::KnownSystem) => if cfg!(target_os = "macos")
+        {
+            "macOS 系统快捷键 · 未尝试注册"
+        } else {
+            "Windows 系统规则 · 未尝试注册"
         }
+        .into(),
         (EvidenceSource::SystemError, _) => {
             let code = report.code.unwrap_or_default();
-            format!("Windows 系统错误 · {code}")
+            format!(
+                "{} 系统错误 · {code}",
+                if cfg!(target_os = "macos") {
+                    "macOS"
+                } else {
+                    "Windows"
+                }
+            )
         }
         _ => "检测证据不可用".into(),
     }
@@ -386,7 +482,11 @@ fn set_idle(ui: &AppWindow) {
         ui,
         MODE_IDLE,
         "选择修饰键",
-        "单击 Ctrl、Alt、Shift、Win；开始后只按一个目标键。",
+        if cfg!(target_os = "macos") {
+            "点选 ⌃、⌥、⇧、⌘；开始后只按一个目标键。"
+        } else {
+            "单击 Ctrl、Alt、Shift、Win；开始后只按一个目标键。"
+        },
         "等待目标键",
         "安全输入 · 不发送完整组合",
         "开始检测",
@@ -410,16 +510,32 @@ fn set_waiting_for_key(ui: &AppWindow, ctrl: bool, alt: bool, shift: bool, win: 
 fn modifier_preview(ctrl: bool, alt: bool, shift: bool, win: bool) -> String {
     let mut parts = Vec::new();
     if ctrl {
-        parts.push("Ctrl");
+        parts.push(if cfg!(target_os = "macos") {
+            "⌃"
+        } else {
+            "Ctrl"
+        });
     }
     if alt {
-        parts.push("Alt");
+        parts.push(if cfg!(target_os = "macos") {
+            "⌥"
+        } else {
+            "Alt"
+        });
     }
     if shift {
-        parts.push("Shift");
+        parts.push(if cfg!(target_os = "macos") {
+            "⇧"
+        } else {
+            "Shift"
+        });
     }
     if win {
-        parts.push("Win");
+        parts.push(if cfg!(target_os = "macos") {
+            "⌘"
+        } else {
+            "Win"
+        });
     }
     if parts.is_empty() {
         "按目标键…".into()
@@ -479,6 +595,7 @@ fn relocalize_view(ui: &AppWindow, language: i18n::Language) {
     )));
 }
 
+#[cfg(windows)]
 fn owner_display_name(path: &str) -> String {
     Path::new(path)
         .file_stem()
@@ -488,10 +605,12 @@ fn owner_display_name(path: &str) -> String {
         .into()
 }
 
+#[cfg(windows)]
 fn owner_evidence(architecture: &str, pid: u32, thread_id: u32) -> String {
     format!("WM_HOTKEY · {architecture} · PID {pid} / TID {thread_id}")
 }
 
+#[cfg(windows)]
 fn explorer_select_argument(path: &Path) -> OsString {
     let mut argument = OsString::from("/select,\"");
     argument.push(path.as_os_str());
@@ -499,6 +618,7 @@ fn explorer_select_argument(path: &Path) -> OsString {
     argument
 }
 
+#[cfg(windows)]
 fn open_file_location(path: &Path) -> Result<(), String> {
     Command::new("explorer.exe")
         // Explorer's parser expects /select,"<path>". Command::arg would quote
@@ -518,7 +638,7 @@ fn color(hex: &str) -> Color {
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
     use crate::detector::SystemRule;
