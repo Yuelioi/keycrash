@@ -24,7 +24,7 @@ For M-series Macs, download `macos-arm64.zip`; for Intel Macs, use `macos-x86_64
 2. Click **Start detection**, then press only the target key inside KeyCrash. To check `Ctrl + Shift + K`, select Ctrl and Shift, then press K.
 3. Read the result. If a registration conflict is found, choose **Locate**. When an app is found, you can open its file location.
 
-Press **Esc** to cancel waiting for a key. Use the top-right language menu or **?** for help.
+Click **Cancel** to stop waiting for a key. **Esc** can also be checked as a target key. Use the top-right language menu or **?** for help.
 
 ## Please note
 

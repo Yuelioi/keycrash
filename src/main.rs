@@ -283,10 +283,6 @@ fn main() -> Result<(), slint::PlatformError> {
                 let Some(ui) = result_ui.upgrade() else {
                     return;
                 };
-                if key_code == 0x35 {
-                    ui.invoke_cancel_requested();
-                    return;
-                }
                 let shortcut = detector::Shortcut::from_native(
                     ui.get_ctrl_selected(),
                     ui.get_alt_selected(),
@@ -588,11 +584,6 @@ fn install_action_key_fallback(
                 .copied()
                 .map(|virtual_key| (virtual_key, key_capture::key_is_down(virtual_key)));
             if let Some(virtual_key) = capture.observe(true, forbidden_modifier_down, key_states) {
-                if virtual_key == key_capture::VK_ESCAPE_CODE {
-                    ui.invoke_cancel_requested();
-                    return;
-                }
-
                 let shortcut = shortcut_from_virtual_key(
                     ui.get_ctrl_selected(),
                     ui.get_alt_selected(),

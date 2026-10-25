@@ -64,14 +64,6 @@ component LanguageSelect inherits Rectangle {
         focus-on-click: false;
         focus-gained(reason) => { root.keyboard-focus = reason == FocusReason.tab-navigation; }
         focus-lost => { root.keyboard-focus = false; }
-        key-pressed(event) => {
-            if event.text == Key.Space || event.text == Key.Return || event.text == Key.DownArrow || event.text == Key.UpArrow {
-                root.keyboard-focus = true;
-                root.open();
-                return accept;
-            }
-            return reject;
-        }
     }
     touch := TouchArea {
         enabled: root.enabled;
@@ -89,15 +81,6 @@ component LanguageSelect inherits Rectangle {
         }
         menu-focus := FocusScope {
             focus-changed-event => { root.expanded = self.has-focus; }
-            key-pressed(event) => {
-                if event.text == Key.DownArrow { root.highlighted = mod(root.highlighted + 1, 3); return accept; }
-                if event.text == Key.UpArrow { root.highlighted = mod(root.highlighted + 2, 3); return accept; }
-                if event.text == Key.Return || event.text == Key.Space {
-                    root.selected(root.codes[root.highlighted]); menu.close(); focus.focus(); root.keyboard-focus = true; return accept;
-                }
-                if event.text == Key.Escape || event.text == Key.Tab { menu.close(); focus.focus(); root.keyboard-focus = true; return accept; }
-                return reject;
-            }
             for label[index] in root.labels : Rectangle {
                 x: 4px; y: 4px + index * 32px; width: parent.width - 8px; height: 32px;
                 border-radius: 5px;
@@ -181,13 +164,6 @@ component ActionButton inherits Rectangle {
         width: parent.width;
         height: parent.height;
         enabled: root.enabled;
-        key-pressed(event) => {
-            if (event.text == Key.Space || event.text == Key.Return) {
-                touch.clicked();
-                return accept;
-            }
-            return reject;
-        }
     }
 
     touch := TouchArea {
@@ -249,13 +225,6 @@ component ModifierTag inherits Rectangle {
         width: parent.width;
         height: parent.height;
         enabled: root.enabled;
-        key-pressed(event) => {
-            if (event.text == Key.Space || event.text == Key.Return) {
-                touch.clicked();
-                return accept;
-            }
-            return reject;
-        }
     }
 
     touch := TouchArea {
@@ -323,13 +292,6 @@ component OutlineButton inherits Rectangle {
         }
         focus-lost => {
             root.focus-ring-visible = false;
-        }
-        key-pressed(event) => {
-            if (event.text == Key.Space || event.text == Key.Return) {
-                touch.clicked();
-                return accept;
-            }
-            return reject;
         }
     }
 
@@ -414,10 +376,6 @@ export component AppWindow inherits Window {
             height: 1px;
             enabled: root.mode == "waiting-key" && !root.help-visible;
             key-pressed(event) => {
-                if (event.text == Key.Escape) {
-                    root.cancel-requested();
-                    return accept;
-                }
                 if (event.modifiers.control || event.modifiers.alt || event.modifiers.shift || event.modifiers.meta) {
                     return accept;
                 }
@@ -706,7 +664,7 @@ export component AppWindow inherits Window {
                 }
                 Text {
                     text: root.mode == "waiting-key"
-                        ? (root.language == "en" ? "Esc cancels · Target key only" : root.language == "ja" ? "Esc でキャンセル · 対象キーのみ" : "Esc 取消 · 只按目标键")
+                        ? (root.language == "en" ? "Click Cancel to stop" : root.language == "ja" ? "中止するにはキャンセルをクリック" : "点击取消可停止检测")
                         : root.filter-running ? (root.language == "en" ? "Restores listeners after checking" : root.language == "ja" ? "検査後にリスナーを復元" : "检查结束后恢复监听")
                         : root.mode == "locating"
                             ? (root.language == "en" ? "One trigger · Observe process messages" : root.language == "ja" ? "1 回送信 · プロセスメッセージを観測" : "触发一次 · 观察进程消息")
@@ -762,13 +720,6 @@ export component AppWindow inherits Window {
             width: parent.width;
             height: parent.height;
             enabled: root.help-visible;
-            key-pressed(event) => {
-                if (event.text == Key.Escape) {
-                    root.help-visible = false;
-                    return accept;
-                }
-                return reject;
-            }
 
             if (root.help-visible) : Rectangle {
                 x: 28px;
@@ -830,7 +781,7 @@ export component AppWindow inherits Window {
                     y: 137px;
                     width: parent.width - 58px;
                     height: 32px;
-                    text: root.language == "en" ? "Choose Start check, then press one key such as A, F1, or Space." : root.language == "ja" ? "「検出を開始」を選び、A、F1、Space などを 1 つ押します。" : "点“开始检测”，再按 A、F1、Space 等一个目标键。";
+                    text: root.language == "en" ? "Click Start check, then press one target key, including Esc." : root.language == "ja" ? "「検出を開始」をクリックし、Esc など対象キーを1つ押します。" : "点“开始检测”，再按 Esc、A、F1 等一个目标键。";
                     color: #45545b;
                     font-size: 12px;
                     wrap: word-wrap;
@@ -862,7 +813,7 @@ export component AppWindow inherits Window {
                     y: 252px;
                     width: parent.width - 156px;
                     height: 18px;
-                    text: root.language == "en" ? "Esc or × returns" : root.language == "ja" ? "Esc または × で戻る" : "Esc 或右上角 × 返回";
+                    text: root.language == "en" ? "Click × to return" : root.language == "ja" ? "× をクリックして戻る" : "点击右上角 × 返回";
                     color: #59676d;
                     font-size: 11px;
                 }
@@ -916,10 +867,6 @@ export component AppWindow inherits Window {
         filter-focus := FocusScope {
             width: parent.width; height: parent.height;
             enabled: root.filter-visible;
-            key-pressed(event) => {
-                if (event.text == Key.Escape) { root.filter-visible = false; return accept; }
-                return reject;
-            }
             if (root.filter-visible) : Rectangle {
                 width: parent.width; height: parent.height;
                 background: #edf1f2;

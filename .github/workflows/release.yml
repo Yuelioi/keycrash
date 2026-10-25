@@ -108,7 +108,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cat > release-notes.md <<'EOF'
-          在使用说明页新增 GitHub 链接，可直接打开项目仓库。
+          Esc 现在可作为目标键检测，取消等待改为点击“取消”按钮。
+
+          开始、取消、语言切换和帮助等界面操作使用鼠标点击，避免与目标键输入冲突。
 
           - **Mac M 系列**：下载 `macos-arm64.zip`。
           - **Intel Mac**：下载 `macos-x86_64.zip`。
