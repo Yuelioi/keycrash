@@ -39,9 +39,9 @@ const MESSAGES: &[Message] = &[
         "アクセシビリティの許可が失われ、キー解放は未確認です。手動で押して離してください。"
     ),
     m!(
-        "先运行目标软件，再测试已启用的快捷键。",
-        "Run the target app, then test an enabled shortcut.",
-        "対象アプリを起動し、有効なショートカットをテストします。"
+        "按顺序发送按键，观察软件响应。",
+        "Send keys in order and observe app responses.",
+        "キーを順に送信し、アプリの応答を確認します。"
     ),
     m!(
         "全局快捷键可停留；应用内快捷键请切到目标。",

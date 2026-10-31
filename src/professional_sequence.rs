@@ -483,7 +483,7 @@ pub fn set_idle(ui: &AppWindow) {
         ui,
         "sequence-idle",
         "编排按键序列",
-        "先运行目标软件，再测试已启用的快捷键。",
+        "按顺序发送按键，观察软件响应。",
         "测试序列",
     );
     ui.set_action_enabled(ui.get_sequence_valid());

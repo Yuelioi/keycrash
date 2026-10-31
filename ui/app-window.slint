@@ -376,10 +376,12 @@ export component AppWindow inherits Window {
     in-out property <string> language: "zh";
     in-out property <bool> help-visible: false;
     in-out property <bool> help-professional: false;
+    property <length> help-scroll-y: 0px;
     public function open-instructions() {
         if (!root.professional-busy && root.mode != "locating") {
             if (root.mode == "waiting-key") { root.cancel-requested(); }
             root.help-professional = root.professional;
+            root.help-scroll-y = 0px;
             root.sequence-key-capturing = false;
             root.help-visible = true;
             help-focus.focus();
@@ -807,44 +809,51 @@ export component AppWindow inherits Window {
                         background: root.help-professional ? transparent : #f8fafb;
                         border-color: root.help-professional ? #aab6bc : #007a7e;
                         accessible-checkable: true; accessible-checked: !root.help-professional;
-                        clicked => { root.help-professional = false; }
+                        clicked => { root.help-scroll-y = 0px; root.help-professional = false; }
                     }
                     OutlineButton {
                         text: root.language == "en" ? "Sequence test" : root.language == "ja" ? "シーケンステスト" : "序列测试";
                         background: root.help-professional ? #f8fafb : transparent;
                         border-color: root.help-professional ? #007a7e : #aab6bc;
                         accessible-checkable: true; accessible-checked: root.help-professional;
-                        clicked => { root.help-professional = true; }
+                        clicked => { root.help-scroll-y = 0px; root.help-professional = true; }
                     }
                 }
-                ScrollView {
+                help-scroll := ScrollView {
                     x: 20px; y: 106px; width: parent.width - 40px; height: parent.height - 158px;
-                    viewport-width: self.width;
-                    VerticalLayout {
+                    viewport-width: self.visible-width - 16px;
+                    viewport-height: max(self.visible-height, help-content.preferred-height);
+                    viewport-y <=> root.help-scroll-y;
+                    vertical-scrollbar-policy: always-on;
+                    horizontal-scrollbar-policy: always-off;
+                    help-content := VerticalLayout {
+                        width: help-scroll.viewport-width;
+                        height: self.preferred-height;
                         spacing: 14px; alignment: start;
                         if (!root.help-professional) : VerticalLayout {
+                            height: self.preferred-height;
                             spacing: 12px; alignment: start;
-                            Text { text: root.language == "en" ? "1  Choose modifiers" : root.language == "ja" ? "1  修飾キーを選択" : "1  选择修饰键"; color: #11171c; font-size: 13px; font-weight: 650; }
-                            Text { text: root.is-macos ? (root.language == "en" ? "Select ⌃ Control, ⌥ Option, ⇧ Shift, or ⌘ Command." : root.language == "ja" ? "⌃ Control、⌥ Option、⇧ Shift、⌘ Command を選びます。" : "点选 ⌃ Control、⌥ Option、⇧ Shift、⌘ Command。") : root.language == "en" ? "Select Ctrl, Alt, Shift, or Win. Start directly if none is needed." : root.language == "ja" ? "Ctrl、Alt、Shift、Win を選択。不要な場合はそのまま開始します。" : "点选 Ctrl、Alt、Shift、Win；不需要修饰键时可直接开始。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "2  Enter the target key" : root.language == "ja" ? "2  対象キーを入力" : "2  输入目标键"; color: #11171c; font-size: 13px; font-weight: 650; }
-                            Text { text: root.language == "en" ? "Click Start check, then press one target key, including Esc." : root.language == "ja" ? "「検出を開始」をクリックし、Esc など対象キーを1つ押します。" : "点“开始检测”，再按 Esc、A、F1 等一个目标键。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを特定" : "3  定位占用软件"; color: #11171c; font-size: 13px; font-weight: 650; }
-                            Text { text: root.is-macos ? (root.language == "en" ? "After checking, choose Locate and grant Accessibility access. This sends the shortcut, so its action may run." : root.language == "ja" ? "検査後に「特定」を選び、アクセシビリティを許可します。元の操作が実行される場合があります。" : "检测后可点“定位占用软件”，按提示允许辅助功能。定位会触发组合，原动作可能执行。") : root.language == "en" ? "If a registration conflict is found, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "登録の競合があれば「特定」を選びます。ショートカットの操作が実行される場合があります。" : "发现注册冲突后点“定位占用软件”。定位会触发快捷键，原动作可能执行。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "1  Choose modifiers" : root.language == "ja" ? "1  修飾キーを選ぶ" : "1  选择修饰键"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            if (!root.is-macos) : Text { text: root.language == "en" ? "Select Ctrl, Alt, Shift, or Win. Leave them off if not needed." : root.language == "ja" ? "Ctrl、Alt、Shift、Win を選びます。不要なら選択せずに進みます。" : "点选 Ctrl、Alt、Shift、Win；没有修饰键就直接开始。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            if (root.is-macos) : Text { text: root.language == "en" ? "Select Control, Option, Shift, or Command. Leave them off if not needed." : root.language == "ja" ? "Control、Option、Shift、Command を選びます。不要なら選択せずに進みます。" : "点选 Control、Option、Shift、Command；没有修饰键就直接开始。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "2  Press the target key" : root.language == "ja" ? "2  対象キーを押す" : "2  输入目标键"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "Click Start check, then press only the target key." : root.language == "ja" ? "「検出を開始」をクリックし、対象キーだけを押します。" : "点“开始检测”，只按要检查的那个键。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを調べる" : "3  定位占用软件"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            if (!root.is-macos) : Text { text: root.language == "en" ? "If a conflict is shown, click Locate the app. This may run the shortcut action." : root.language == "ja" ? "競合があれば「使用中のアプリを特定」をクリック。元の操作が実行される場合があります。" : "提示占用后，点“定位占用软件”。定位可能执行原快捷键操作。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            if (root.is-macos) : Text { text: root.language == "en" ? "Click Locate the app and grant Accessibility access when prompted. This may run the shortcut action." : root.language == "ja" ? "「使用中のアプリを特定」をクリックし、案内に従ってアクセシビリティを許可します。元の操作が実行される場合があります。" : "点“定位占用软件”，按提示允许辅助功能。定位可能执行原快捷键操作。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
                         }
                         if (root.help-professional) : VerticalLayout {
+                            height: self.preferred-height;
                             spacing: 12px; alignment: start;
-                            Text { text: root.language == "en" ? "1  Build the sequence" : root.language == "ja" ? "1  シーケンスを編集" : "1  编排按键顺序"; color: #11171c; font-size: 13px; font-weight: 650; }
-                            Text { text: root.language == "en" ? "Choose Tap, Key down, Key up, or Wait, then add a step. Move or delete steps using the row buttons. Every held key needs a Key up step." : root.language == "ja" ? "押して離す・押下・解放・待機を選び、ステップを追加します。行のボタンで並べ替え・削除できます。押下には解放も必要です。" : "选择点按、按下、松开或等待，再添加步骤。用行内按钮调整顺序或删除；按下的键需要配上松开步骤。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "Pick key fills the key field from one key pressed in this window. Then choose Tap, Key down, or Key up and click Add. It does not add a step or send test input. Keys intercepted by the system or another app can be chosen from the list." : root.language == "ja" ? "「キーを入力」で、このウィンドウで押したキーを選択します。動作を選び「追加」をクリックしてください。自動追加やテスト送信は行いません。システムや他のアプリが取得するキーは一覧から選択できます。" : "点“按键选取”，在本窗口按一个键即可填入；再选点按、按下或松开，点“添加”。选取不会自动添加步骤或发送测试输入。系统或其他软件截获的键可从列表选择。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "Ctrl+C+C: Ctrl down → tap C → wait 100 ms → tap C → Ctrl up. The Ctrl key stays held between the two C presses." : root.language == "ja" ? "Ctrl+C+C：Ctrl 押下 → C を押して離す → 100 ms 待機 → C を押して離す → Ctrl 解放。C の間も Ctrl を保持します。" : "Ctrl+C+C 示例：按下 Ctrl → 点按 C → 等待 100 ms → 点按 C → 松开 Ctrl。两次 C 之间保持 Ctrl 按住。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "2  Test in the target app" : root.language == "ja" ? "2  対象アプリでテスト" : "2  切换到目标软件测试"; color: #11171c; font-size: 13px; font-weight: 650; }
-                            Text { text: root.language == "en" ? "First run the app and enable its shortcut. Click Test sequence. Global shortcuts can run while KeyCrash is focused; for an in-app shortcut, switch to that app during the 3-second countdown. Actions run as usual. Cancel stops later steps and releases this test's keys." : root.language == "ja" ? "対象アプリを起動し、ショートカットを有効にしてからテストします。グローバルキーはこの画面でも動作します。アプリ内の操作は3秒の間に対象へ切り替えてください。元の操作も実行され、取消時は後続を止めてキーを解放します。" : "先运行目标软件并启用相应快捷键，再点击“测试序列”。全局快捷键可停留在此窗口；应用内快捷键请在 3 秒内切到目标软件。原操作正常执行；取消会停止后续步骤，并松开本次按住的键。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            if (!root.is-macos) : Text { text: root.language == "en" ? "“Listen as administrator” requests Windows UAC for response observers only. It does not elevate input delivery; sending to a higher-privilege target may fail." : root.language == "ja" ? "「管理者権限で監視」は UAC で応答監視のみを昇格します。入力の送信権限は変わらず、上位権限の対象では失敗する場合があります。" : "“以管理员权限监听”会请求 Windows UAC，只提升响应监听权限；不会提升发送权限，向更高权限的目标窗口发送可能失败。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "3  Read the evidence" : root.language == "ja" ? "3  結果を確認" : "3  查看发送与响应"; color: #11171c; font-size: 13px; font-weight: 650; }
-                            if (!root.is-macos) : Text { text: root.language == "en" ? "Sent lists input accepted by Windows, not proof the target acted. Responses cover registered global hotkeys and GoldenDict sequence notifications. Other in-app commands may have no observable response. A matching binding is diagnostic evidence; no response does not mean the sequence is free." : root.language == "ja" ? "送信欄は Windows が受け付けた入力で、実行完了の証明ではありません。応答は登録されたグローバルキーと GoldenDict の連続キー通知が対象です。他のアプリ内操作は応答を観測できない場合があります。設定との一致は診断情報で、応答なしでも未使用とは判断できません。" : "发送记录表示 Windows 接受了输入，不保证目标已执行。响应目前覆盖已注册的全局组合键和 GoldenDict 连续按键通知，其他应用内操作可能没有可观察响应。活动绑定相符是诊断一致性；没有响应不代表序列可用。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            if (root.is-macos) : Text { text: root.language == "en" ? "Grant Accessibility access before testing. Sent lists submitted events, not proof the target acted. Responses show marked Carbon hotkey receipts; arbitrary in-app commands and full-sequence ownership are not identified." : root.language == "ja" ? "テストにはアクセシビリティの許可が必要です。送信はイベントの投入記録で、実行完了の証明ではありません。応答はこのテストの Carbon 熱鍵通知のみで、任意のアプリ内操作やシーケンス全体の占有は特定しません。" : "测试需要辅助功能权限。发送记录表示已提交事件，不保证目标已执行。响应仅显示带本次测试标记的 Carbon 系统热键通知，不识别任意应用内动作或整段序列的占用者。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "Printable keys use US position labels; actual characters follow your keyboard layout. Lock keys change the keyboard state. Fn/Globe and device-specific keys are not included." : root.language == "ja" ? "文字キーは米国配列の位置表記で、実際の文字は現在の配列に従います。ロックキーは状態を変更します。Fn/Globe や機器固有キーは対象外です。" : "字符键按美式键位标注，实际字符由当前键盘布局决定。锁定键会改变键盘状态；Fn/Globe 和设备专用键不在目录内。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
-                            Text { text: root.language == "en" ? "Up to 32 steps and 5 seconds; waits allow 20–2000 ms. The two most recent tested plans are saved locally and can be loaded or deleted. Sent events and responses are not saved." : root.language == "ja" ? "最大32ステップ・合計5秒、待機は20～2000 ms。直近2件の履歴はローカルに保存し、読み込み・削除できます。送信記録と応答は保存しません。" : "最多 32 步、总时长 5 秒；等待支持 20–2000 ms。最近测试的两条序列保存在本机，可载入或删除；发送记录与软件响应不保存。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "1  Add key steps" : root.language == "ja" ? "1  キーステップを追加" : "1  添加按键步骤"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "Choose an action, click Pick key and press one key, then click Add. For Wait, set a duration." : root.language == "ja" ? "動作を選び、「キーを入力」でキーを押して「追加」。待機は時間を指定します。" : "选择动作，点“按键选取”按一个键，再点“添加”。等待步骤填写时长。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "Ctrl+C+C: Ctrl down → tap C → wait 100 ms → tap C → Ctrl up." : root.language == "ja" ? "Ctrl+C+C：Ctrl 押下 → C を押して離す → 100 ms 待機 → C を押して離す → Ctrl 解放。" : "Ctrl+C+C：按下 Ctrl → 点按 C → 等待 100 ms → 点按 C → 松开 Ctrl。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "2  Test the sequence" : root.language == "ja" ? "2  シーケンスをテスト" : "2  测试序列"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "Click Test sequence. For in-app shortcuts, switch to the target window within 3 seconds. Actions will run; Cancel test stops later keys." : root.language == "ja" ? "「シーケンスをテスト」をクリック。アプリ内操作は3秒以内に対象へ切り替えます。元の操作も実行され、「テストを取消」で後続のキーを止めます。" : "点“测试序列”；应用内快捷键请在 3 秒内切到目标窗口。测试会执行原操作，点“取消测试”停止后续按键。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            if (!root.is-macos) : Text { text: root.language == "en" ? "To check administrator apps, enable Listen as administrator before testing." : root.language == "ja" ? "管理者アプリを調べるときは「管理者権限で監視」を選んでからテストします。" : "检查管理员软件时，勾选“以管理员权限监听”后再测试。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            if (root.is-macos) : Text { text: root.language == "en" ? "Grant KeyCrash Accessibility access when prompted before testing." : root.language == "ja" ? "初回テストでは、案内に従って KeyCrash のアクセシビリティを許可します。" : "首次测试请按提示允许 KeyCrash 使用辅助功能。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "3  Read the results" : root.language == "ja" ? "3  結果を見る" : "3  查看结果"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "Check Sent and Responses for the keys and responding apps. No response does not mean the shortcut is unused." : root.language == "ja" ? "送信と応答でキーと反応したアプリを確認します。応答がなくても未使用とは限りません。" : "在“发送记录”和“软件响应”中核对按键与响应的软件；无响应不代表未被使用。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
                         }
 
                     }
@@ -886,6 +895,7 @@ export component AppWindow inherits Window {
             enabled: root.mode != "locating" && !root.professional-busy;
             accessible-name: root.language == "en" ? "Language" : root.language == "ja" ? "言語" : "语言";
             selected(value) => {
+                root.help-scroll-y = 0px;
                 root.language-changed(value);
             }
         }
@@ -960,7 +970,7 @@ export component AppWindow inherits Window {
                     }
 
                     Text {
-                        text: root.language == "en" ? "Run the app first. For in-app shortcuts, switch to it during the countdown." : root.language == "ja" ? "対象アプリを起動。アプリ内操作はカウント中に対象へ切替。" : "先运行目标软件；应用内快捷键请在倒计时内切到目标。";
+                        text: root.language == "en" ? "For in-app shortcuts, switch to the target window during the 3-second countdown." : root.language == "ja" ? "アプリ内の操作は3秒の間に対象ウィンドウへ切り替えます。" : "应用内快捷键请在 3 秒倒计时内切到目标窗口。";
                         wrap: word-wrap; color: #59676d; font-size: 11px;
                     }
                 }
