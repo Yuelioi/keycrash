@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $targetRoot = & (Join-Path $PSScriptRoot 'get-target-root.ps1')
 $releaseRoot = Join-Path $targetRoot $Profile
-$profileArgs = if ($Profile -eq 'release') { @('--release') } else { @() }
+[string[]]$profileArgs = @(if ($Profile -eq 'release') { '--release' })
 $x86Target = 'i686-pc-windows-msvc'
 
 cargo build --locked @profileArgs --workspace --target-dir $targetRoot --manifest-path (Join-Path $projectRoot 'Cargo.toml')
