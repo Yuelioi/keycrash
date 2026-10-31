@@ -1,4 +1,8 @@
 use core::ptr::{read_volatile, write_volatile};
+mod goldendict;
+mod trace;
+#[path = "../../trace_protocol.rs"]
+mod trace_protocol;
 use windows_sys::Win32::Foundation::{CloseHandle, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::System::Memory::{
     FILE_MAP_ALL_ACCESS, MapViewOfFile, OpenFileMappingW, UnmapViewOfFile,

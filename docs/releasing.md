@@ -8,7 +8,7 @@ Mac 包尚未做 Developer ID 签名或 Apple 公证，Release 说明必须保�
 
 ## 发布新版本
 
-1. 更新根目录 `Cargo.toml` 的版本号，并同步 `Cargo.lock`；提交并推送到 `main`。
+1. 更新 `docs/release-notes.md` 的功能、验证范围与签名限制，工作流从标签中读取此文件作为草稿正文。更新根目录 `Cargo.toml` 的版本号，并同步 `Cargo.lock`；提交并推送到 `main`。
 2. 在要发布的提交上创建并推送匹配版本号的标签：
 
    ```powershell

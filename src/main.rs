@@ -17,8 +17,23 @@ compile_error!("KeyCrash supports Windows and macOS");
 mod i18n;
 #[cfg(windows)]
 mod key_capture;
+#[cfg(target_os = "macos")]
+#[path = "macos/sequence_host.rs"]
+mod mac_sequence_host;
 #[cfg(windows)]
 mod owner_probe;
+#[path = "professional_sequence.rs"]
+mod professional;
+mod recording;
+mod sequence;
+mod sequence_history;
+mod sequence_key_capture;
+#[path = "../native/sequence_protocol.rs"]
+mod sequence_protocol;
+mod sequence_test;
+#[cfg(windows)]
+#[path = "../native/trace_protocol.rs"]
+mod trace_protocol;
 
 #[cfg(target_os = "macos")]
 #[path = "macos/filters.rs"]
@@ -61,6 +76,10 @@ const PROJECT_URL: &str = "https://github.com/Yuelioi/keycrash";
 
 fn main() -> Result<(), slint::PlatformError> {
     #[cfg(target_os = "macos")]
+    if let Some(code) = mac_sequence_host::entry() {
+        std::process::exit(code);
+    }
+    #[cfg(target_os = "macos")]
     if let Some(code) = mac_filters::guardian_entry() {
         std::process::exit(code);
     }
@@ -75,6 +94,7 @@ fn main() -> Result<(), slint::PlatformError> {
     #[cfg(target_os = "macos")]
     let probe_worker = Rc::new(RefCell::new(None::<std::thread::JoinHandle<()>>));
     set_idle(&ui);
+    let professional_mode = professional::install(&ui);
 
     #[cfg(target_os = "macos")]
     install_filter_actions(
@@ -300,6 +320,7 @@ fn main() -> Result<(), slint::PlatformError> {
     #[cfg(debug_assertions)]
     let _diagnostic_snapshots = diagnostic_snapshots(&ui);
     let result = ui.run();
+    drop(professional_mode);
     #[cfg(target_os = "macos")]
     if let Some(cancelled) = active_probe.borrow_mut().take() {
         cancelled.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -895,6 +916,10 @@ fn evidence_label(report: &ProbeReport) -> String {
 }
 
 fn set_idle(ui: &AppWindow) {
+    if ui.get_professional() {
+        professional::set_idle(ui);
+        return;
+    }
     set_view(
         ui,
         MODE_IDLE,
@@ -989,6 +1014,7 @@ fn set_view(
 }
 
 fn relocalize_view(ui: &AppWindow, language: i18n::Language) {
+    professional::relocalize(ui, language);
     ui.set_filter_message(i18n::text(language, ui.get_filter_message().as_str()).into());
     ui.set_filter_report(
         ui.get_filter_report()

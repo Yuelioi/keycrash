@@ -6,12 +6,14 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         cc::Build::new()
             .file("src/macos/filter_native.m")
+            .file("src/macos/sequence_native.m")
             .flag("-fobjc-arc")
             .flag("-mmacosx-version-min=11.0")
             .compile("keycrash_filter");
         println!("cargo:rustc-link-lib=framework=Cocoa");
         println!("cargo:rustc-link-lib=framework=Carbon");
         println!("cargo:rerun-if-changed=src/macos/filter_native.m");
+        println!("cargo:rerun-if-changed=src/macos/sequence_native.m");
     }
 
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")

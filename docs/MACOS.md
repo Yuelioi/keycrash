@@ -104,3 +104,9 @@ python3 scripts/test-macos-owner-ui.py --app '/path/to/KeyCrash Diagnostics.app'
 - Apple SDK `CarbonEvents.h`：热键注册参数、非线程安全约束、`CopySymbolicHotKeys` 数据及覆盖范围（可在安装的 SDK 中核对；[Apple 头文件镜像](https://github.com/phracker/MacOSX-SDKs/blob/master/MacOSX11.3.sdk/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/Headers/CarbonEvents.h)）。
 - [Apple 关于 macOS 15 热键限制及 15.2 修正的讨论](https://developer.apple.com/forums/thread/763878)。
 - [CGGetEventTapList](https://developer.apple.com/documentation/coregraphics/cggeteventtaplist(_:_:_:)) 提供监听器列表；该列表本身没有目标组合的占用证据。
+
+## 专业序列测试
+
+专业模式与Windows共用手动编排、点按/按下/松开/等待、增删排序、3秒倒计时与取消；最多32步/5秒，目录为125个原生键位，含左右修饰键、F1–F20、小键盘、常见JIS/ISO键及媒体/亮度事件。标签按美式键位，实际文字依布局；Fn/Globe与设备专用键不在目录。首次测试需辅助功能权限，产品请求由用户确认，不自动调整权限或停用其他应用监听。
+
+同一主程序以输入子模式执行KSP1/KST1计划，不创建子GUI；控制管道与父进程身份约束生命周期，取消/父退出释放本次held。发送日志是Quartz事件提交记录，无法证明目标执行。软件响应仅为带本次marker的Carbon系统热键接收通知；没有Windows GoldenDict绑定读取或任意应用内操作归因，无响应也不能判断可用。旧专业录制入口已替换，不保留兼容分支。实际触发、授权、取消释放、非美式布局和界面仍须在目标Mac用户会话中人工验收；编译或不发送系统按键的契约检查不能代替这些验收。

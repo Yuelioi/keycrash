@@ -3,9 +3,9 @@ name: macOS CI
 on:
   push:
     branches: ['**']
-    paths: ['src/**', 'ui/**', 'assets/**', 'examples/**', 'scripts/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', '.github/workflows/macos.yml']
+    paths: ['src/**', 'native/sequence_protocol.rs', 'ui/**', 'assets/**', 'examples/**', 'scripts/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', '.github/workflows/macos.yml']
   pull_request:
-    paths: ['src/**', 'ui/**', 'assets/**', 'examples/**', 'scripts/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', '.github/workflows/macos.yml']
+    paths: ['src/**', 'native/sequence_protocol.rs', 'ui/**', 'assets/**', 'examples/**', 'scripts/**', 'Cargo.toml', 'Cargo.lock', 'build.rs', '.github/workflows/macos.yml']
   workflow_dispatch:
   workflow_call:
     inputs:

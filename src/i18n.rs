@@ -34,6 +34,421 @@ macro_rules! m {
 
 const MESSAGES: &[Message] = &[
     m!(
+        "辅助功能权限已失效，按键释放状态无法确认；请手动按下并松开。",
+        "Accessibility access was lost. Key release is unconfirmed; press and release the keys manually.",
+        "アクセシビリティの許可が失われ、キー解放は未確認です。手動で押して離してください。"
+    ),
+    m!(
+        "先运行目标软件，再测试已启用的快捷键。",
+        "Run the target app, then test an enabled shortcut.",
+        "対象アプリを起動し、有効なショートカットをテストします。"
+    ),
+    m!(
+        "全局快捷键可停留；应用内快捷键请切到目标。",
+        "Global shortcuts work here; switch apps for in-app shortcuts.",
+        "グローバルキーはこの画面で、アプリ内操作は対象へ切替。"
+    ),
+    m!(
+        "测试组件异常结束，释放状态未确认；如有按键保持按下，请手动按下并松开。",
+        "The tester exited unexpectedly. Key release is unconfirmed; press and release any held keys manually.",
+        "テストが異常終了し、キーの解放は未確認です。押下状態のキーがあれば、手動で押して離してください。"
+    ),
+    m!("测试已停止", "Test stopped", "テストを停止しました"),
+    m!(
+        "组件异常结束，部分发送状态未知。",
+        "The tester exited unexpectedly; some input state is unknown.",
+        "テストが異常終了し、一部の送信状態は不明です。"
+    ),
+    m!(
+        "正在发送步骤并观察软件响应。",
+        "Sending steps and observing app responses.",
+        "ステップを送信し、アプリの応答を観測しています。"
+    ),
+    m!("已完成步骤：", "Steps completed:", "完了ステップ："),
+    m!(
+        "编排按键序列",
+        "Build a key sequence",
+        "キーシーケンスを編集"
+    ),
+    m!(
+        "测试会执行原操作；倒计时内切到目标软件。",
+        "Actions will run. Switch to the target app during the countdown.",
+        "元の操作も実行します。カウント中に対象アプリへ切り替えてください。"
+    ),
+    m!("测试序列", "Test sequence", "シーケンスをテスト"),
+    m!("再次测试", "Test again", "再テスト"),
+    m!("取消测试", "Cancel test", "テストを取消"),
+    m!("正在准备测试", "Preparing test", "テストを準備中"),
+    m!(
+        "准备完成后将倒计时，请稍候。",
+        "The countdown will start when ready.",
+        "準備ができたらカウントを開始します。"
+    ),
+    m!(
+        "即将发送测试序列",
+        "Sequence starts soon",
+        "まもなく入力を送信"
+    ),
+    m!(
+        "请切换到目标软件，原操作会正常执行。",
+        "Switch to the target app. Its shortcut actions will run.",
+        "対象アプリに切り替えてください。元の操作も実行されます。"
+    ),
+    m!("秒后发送", "seconds until sending", "秒後に送信"),
+    m!("正在测试序列", "Testing sequence", "シーケンスをテスト中"),
+    m!(
+        "正在等待软件响应。",
+        "Waiting for app responses.",
+        "アプリの応答を待っています。"
+    ),
+    m!(
+        "正在取消并松开本次按键…",
+        "Canceling and releasing this test's keys…",
+        "取消し、このテストのキーを解放しています…"
+    ),
+    m!("测试未完成", "Test did not complete", "テストは未完了です"),
+    m!(
+        "部分步骤未能发送，请查看结果。",
+        "Some steps could not be sent. Check the results.",
+        "一部のステップを送信できませんでした。結果を確認してください。"
+    ),
+    m!("测试已取消", "Test canceled", "テストを取消しました"),
+    m!(
+        "已停止发送测试序列。",
+        "Stopped sending the sequence.",
+        "シーケンスの送信を停止しました。"
+    ),
+    m!(
+        "测试结果不完整",
+        "Test results incomplete",
+        "テスト結果が不完全です"
+    ),
+    m!(
+        "不能确认完整序列，请查看发送记录和软件响应。",
+        "The full sequence is unconfirmed. Check Sent and Responses.",
+        "シーケンス全体は未確認です。送信記録と応答を確認してください。"
+    ),
+    m!(
+        "已关联到软件响应",
+        "App response linked",
+        "アプリ応答を関連付けました"
+    ),
+    m!(
+        "软件活动绑定与测试输入相符，不代表独占。",
+        "The active binding matches test input; this does not prove exclusive ownership.",
+        "実行中の設定とテスト入力が一致します。独占は証明しません。"
+    ),
+    m!(
+        "已观察到软件响应",
+        "App responses observed",
+        "アプリの応答を観測しました"
+    ),
+    m!(
+        "响应已记录，整段序列的关联仍未确认。",
+        "Responses recorded; the link to the full sequence is unconfirmed.",
+        "応答を記録しました。シーケンス全体との対応は未確認です。"
+    ),
+    m!(
+        "未观察到软件响应",
+        "No app response observed",
+        "アプリの応答は未観測です"
+    ),
+    m!(
+        "不能据此判断序列可用或没有其他监听。",
+        "This does not show the sequence is free or rule out other listeners.",
+        "未使用とは判断できず、他の監視も除外できません。"
+    ),
+    m!(
+        "无法开始测试",
+        "Could not start the test",
+        "テストを開始できません"
+    ),
+    m!(
+        "请先添加按键步骤。",
+        "Add key steps first.",
+        "キーのステップを追加してください。"
+    ),
+    m!(
+        "最多编排 32 个步骤。",
+        "A sequence can have up to 32 steps.",
+        "最大32ステップまでです。"
+    ),
+    m!(
+        "等待时间应为 20 至 2000 毫秒。",
+        "Wait must be between 20 and 2000 ms.",
+        "待機は20～2000 msにしてください。"
+    ),
+    m!(
+        "请选择有效按键。",
+        "Select a valid key.",
+        "有効なキーを選んでください。"
+    ),
+    m!(
+        "该按键已按住，请先添加松开步骤。",
+        "This key is held. Add a Key up step first.",
+        "このキーは押下中です。先に解放を追加してください。"
+    ),
+    m!(
+        "系统保留组合不能自动测试。",
+        "System-reserved shortcuts cannot be tested automatically.",
+        "システム予約の組み合わせは自動テストできません。"
+    ),
+    m!(
+        "松开前需要先按下该键。",
+        "Add Key down before Key up for this key.",
+        "解放の前に同じキーの押下を追加してください。"
+    ),
+    m!(
+        "序列总时长不能超过 5 秒。",
+        "The sequence cannot exceed 5 seconds.",
+        "合計時間は5秒以内にしてください。"
+    ),
+    m!(
+        "至少添加一个按键步骤。",
+        "Add at least one key step.",
+        "キーのステップを1つ以上追加してください。"
+    ),
+    m!(
+        "请补上松开步骤，避免按键保持按下。",
+        "Add a Key up step for every held key.",
+        "押下したキーに解放ステップを追加してください。"
+    ),
+    m!(
+        "序列测试组件缺失，请重新完整解压。",
+        "Sequence test components are missing. Extract the full package again.",
+        "テストのコンポーネントが不足しています。全ファイルを再展開してください。"
+    ),
+    m!(
+        "无法启动序列测试组件。",
+        "Could not start the sequence tester.",
+        "シーケンステストを起動できません。"
+    ),
+    m!(
+        "序列测试组件提前退出，结果可能不完整。",
+        "The sequence tester exited early; results may be incomplete.",
+        "テストが予期せず終了しました。結果が不完全な可能性があります。"
+    ),
+    m!(
+        "序列测试组件未能就绪。",
+        "The sequence tester did not become ready.",
+        "シーケンステストを準備できませんでした。"
+    ),
+    m!(
+        "序列测试已取消。",
+        "The sequence test was canceled.",
+        "シーケンステストは取消されました。"
+    ),
+    m!(
+        "无法发送测试序列。",
+        "Could not send the test sequence.",
+        "テスト入力を送信できません。"
+    ),
+    m!(
+        "序列测试超时，结果可能不完整。",
+        "The sequence test timed out; results may be incomplete.",
+        "テストがタイムアウトしました。結果が不完全な可能性があります。"
+    ),
+    m!(
+        "序列测试组件返回了不一致的步骤。",
+        "The sequence tester returned inconsistent steps.",
+        "テストの送信記録に不整合があります。"
+    ),
+    m!(
+        "请先松开按住的按键后再测试。",
+        "Release held keys before testing.",
+        "押しているキーを離してからテストしてください。"
+    ),
+    m!(
+        "发送按键失败，请检查目标窗口权限。",
+        "Could not send keys. Check the target window's permissions.",
+        "キーを送信できません。対象ウィンドウの権限を確認してください。"
+    ),
+    m!(
+        "部分按键可能未松开，请手动按下并松开它们。",
+        "Some keys may remain held. Press and release them manually.",
+        "一部のキーが押下状態の可能性があります。手動で押して離してください。"
+    ),
+    m!(
+        "管理员监听未获授权。",
+        "Administrator access was not approved.",
+        "管理者権限が許可されませんでした。"
+    ),
+    m!(
+        "管理员监听组件启动失败。",
+        "Could not start the administrator response observer.",
+        "管理者権限の応答監視を開始できません。"
+    ),
+    m!(
+        "管理员监听组件未取得管理员权限。",
+        "The response observer did not obtain administrator access.",
+        "応答監視が管理者権限を取得できませんでした。"
+    ),
+    m!(
+        "此平台不支持管理员监听。",
+        "Administrator response observation is not available on this platform.",
+        "このプラットフォームは管理者権限の応答監視に対応していません。"
+    ),
+    m!(
+        "软件响应已记录",
+        "App responses recorded",
+        "アプリの応答を記録しました"
+    ),
+    m!(
+        "已记录软件收到的组合，可在软件响应中查看。",
+        "Received combinations are listed in App responses.",
+        "受信した組み合わせは「アプリの応答」で確認できます。"
+    ),
+    m!(
+        "部分按键未录到按下事件",
+        "Some key-down events were not observed",
+        "一部の押下イベントが未記録です"
+    ),
+    m!(
+        "部分按下事件未观测到，请同时查看软件响应。",
+        "Some key-down events were not observed. Check App responses too.",
+        "一部の押下イベントを観測できませんでした。「アプリの応答」も確認してください。"
+    ),
+    m!(
+        "键盘录制组件启动失败。",
+        "Could not start the keyboard recorder.",
+        "キーボード記録を開始できません。"
+    ),
+    m!(
+        "键盘录制组件提前退出。",
+        "The keyboard recorder exited before starting.",
+        "キーボード記録コンポーネントが開始前に終了しました。"
+    ),
+    m!(
+        "键盘录制启动超时。",
+        "The keyboard recorder did not start in time.",
+        "キーボード記録の開始がタイムアウトしました。"
+    ),
+    m!(
+        "已关联快捷键输入",
+        "Shortcut input linked",
+        "キー入力を関連付けました"
+    ),
+    m!(
+        "活动绑定与输入一致；不表示独占该快捷键。",
+        "Active binding matches the input; other apps may also respond.",
+        "実行中の設定と入力が一致します。他のアプリも応答する場合があります。"
+    ),
+    m!(
+        "专业模式组件不完整，请重新完整解压。",
+        "Professional components are missing. Extract the full package again.",
+        "プロモードのコンポーネントが不足しています。全ファイルを再展開してください。"
+    ),
+    m!(
+        "检查组件或系统权限后重试。",
+        "Check the app components or system permissions and retry.",
+        "コンポーネントまたはシステム権限を確認して再試行してください。"
+    ),
+    m!(
+        "按键与响应已记录",
+        "Keys and responses recorded",
+        "キーと応答を記録しました"
+    ),
+    m!(
+        "录制结果不代表已确认整段序列的占用软件。",
+        "Responses do not prove which app owns the entire sequence.",
+        "応答だけではシーケンス全体の使用アプリを確定できません。"
+    ),
+    m!(
+        "响应或按键记录不完整",
+        "Key or response recording is incomplete",
+        "キーまたは応答の記録が不完全です"
+    ),
+    m!(
+        "另一个专业录制正在运行，请先结束。",
+        "Stop the other professional recording first.",
+        "他のプロモード記録を先に終了してください。"
+    ),
+    m!(
+        "专业消息监听启动失败。",
+        "Could not start response observers.",
+        "応答の監視を開始できません。"
+    ),
+    m!(
+        "专业消息监听组件提前退出。",
+        "A response observer exited before starting.",
+        "応答監視コンポーネントが開始前に終了しました。"
+    ),
+    m!(
+        "专业消息监听启动超时。",
+        "Response observers did not start in time.",
+        "応答監視の開始がタイムアウトしました。"
+    ),
+    m!(
+        "录制完整快捷键",
+        "Record a key sequence",
+        "キーシーケンスを記録"
+    ),
+    m!(
+        "直接操作组合键、连续按键或双击修饰键。",
+        "Enter a shortcut, key sequence, or double-tap a modifier.",
+        "組み合わせ・連続入力・修飾キーの2回押しを記録。"
+    ),
+    m!("开始录制", "Start recording", "記録を開始"),
+    m!("结束录制", "Stop recording", "記録を終了"),
+    m!("重新录制", "Record again", "再度記録"),
+    m!("正在录制", "Recording keys", "キーを記録中"),
+    m!(
+        "按实际快捷键操作，完成后用鼠标结束。",
+        "Press the actual shortcut; click Stop recording when done.",
+        "実際のキーを押し、マウスで記録を終了します。"
+    ),
+    m!(
+        "无法开始录制",
+        "Could not start recording",
+        "記録を開始できません"
+    ),
+    m!(
+        "检查系统权限后重试。",
+        "Check system permissions and try again.",
+        "システム権限を確認して再試行してください。"
+    ),
+    m!(
+        "请在系统设置中允许辅助功能后重试。",
+        "Allow Accessibility in System Settings, then try again.",
+        "システム設定でアクセシビリティを許可して再試行してください。"
+    ),
+    m!(
+        "无法启动全局按键录制。",
+        "Could not start global key recording.",
+        "グローバルキー記録を開始できません。"
+    ),
+    m!(
+        "无法启动本地按键录制。",
+        "Could not start local key recording.",
+        "ローカルキー記録を開始できません。"
+    ),
+    m!("录制已结束", "Recording stopped", "記録を終了しました"),
+    m!(
+        "录制中断，内容可能不完整",
+        "Recording interrupted; events may be missing",
+        "記録が中断され、一部の入力が欠けている場合があります"
+    ),
+    m!(
+        "已到录制上限",
+        "Recording limit reached",
+        "記録の上限に達しました"
+    ),
+    m!(
+        "没有录到按键",
+        "No keys recorded",
+        "キーが記録されていません"
+    ),
+    m!(
+        "按键序列已记录",
+        "Key sequence recorded",
+        "キーシーケンスを記録しました"
+    ),
+    m!(
+        "录制结果不代表已确认占用软件。",
+        "Recording alone does not identify the app using it.",
+        "記録だけでは使用中のアプリを特定できません。"
+    ),
+    m!(
         "正在恢复全局监听",
         "Restoring global listeners",
         "グローバル監視を復元中"
@@ -457,6 +872,20 @@ pub fn text(language: Language, source: &str) -> String {
 }
 
 fn translate_dynamic(language: Language, source: &str) -> Option<String> {
+    if let Some(detail) = extract_any(
+        source,
+        &[
+            ("专业消息监听启动失败：", ""),
+            ("Response observer failed to start: ", ""),
+            ("応答監視を開始できません：", ""),
+        ],
+    ) {
+        return Some(match language {
+            Language::Zh => format!("专业消息监听启动失败：{detail}"),
+            Language::En => format!("Response observer failed to start: {detail}"),
+            Language::Ja => format!("応答監視を開始できません：{detail}"),
+        });
+    }
     if let Some(code) = extract_any(
         source,
         &[

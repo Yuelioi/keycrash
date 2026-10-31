@@ -1,5 +1,5 @@
 /*
-THESIS: 虚拟修饰键与一个本地目标键汇成可解释的检测轨迹，拒绝真实触发完整快捷键。
+THESIS: 普通模式安全检测单组合，Windows 与 Mac 专业模式手动编排并测试按键序列。
 OWN-WORLD: 冷灰仪器面板、墨黑读数、青色确认、红橙操作，以及检测时出现的正交信号轨迹。
 STORY: 用户点选 modifier tags，点击开始，只按一个目标键，然后读取结论与证据边界。
 FIRST VIEWPORT: 460×380 单窗口，上方是品牌和状态，中部是 modifier tags、目标键读数与测量轨迹，底部只有一个主操作。
@@ -7,9 +7,12 @@ FORM: 信号轨迹视觉世界；证据剖面式层级，种子 132c565a。
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 */
 
-import { CheckBox, ScrollView } from "std-widgets.slint";
+import { CheckBox, ScrollView, ComboBox, SpinBox } from "std-widgets.slint";
 
 export struct FilterChoice { name: string, path: string, pid: int, selected: bool }
+export struct RecordedEvent { time: string, key: string, action: string, injected: bool }
+export struct SequenceStep { action: int, key: string, delay: int, done: bool }
+export struct ObservedResponse { time: string, app: string, path: string, kind: string, value: string, pid: int, tid: int, architecture: string, binding: string, matched: bool, input-range: string }
 
 component LanguageSelect inherits Rectangle {
     in property <string> language;
@@ -271,6 +274,7 @@ component OutlineButton inherits Rectangle {
 
     Text {
         text: root.text;
+        overflow: elide;
         color: #344249;
         font-size: root.label-size;
         font-weight: 650;
@@ -318,9 +322,38 @@ component OutlineButton inherits Rectangle {
     }
 }
 
+component MoveStepButton inherits OutlineButton {
+    in property <bool> up;
+    text: "";
+    width: 28px;
+    height: 28px;
+    corner-radius: 4px;
+    border-width: 0px;
+    Path {
+        x: 9px; y: 11px; width: 10px; height: 6px;
+        commands: root.up ? "M 0 6 L 5 1 L 10 6" : "M 0 0 L 5 5 L 10 0";
+        fill: transparent;
+        stroke: #536168; stroke-width: 1.5px;
+    }
+}
+
+component DeleteStepButton inherits OutlineButton {
+    text: "";
+    width: 28px;
+    height: 28px;
+    corner-radius: 4px;
+    border-width: 0px;
+    Path {
+        x: 9px; y: 9px; width: 10px; height: 10px;
+        commands: "M 1 1 L 9 9 M 9 1 L 1 9";
+        fill: transparent;
+        stroke: #536168; stroke-width: 1.5px;
+    }
+}
+
 export component AppWindow inherits Window {
     width: 460px;
-    height: root.filter-visible ? 520px : root.is-macos && root.filter-available ? 428px : 380px;
+    height: root.help-visible ? 620px : root.professional ? 700px : root.filter-visible ? 560px : root.is-macos && root.filter-available ? 468px : 420px;
     in property <string> app-version;
     in property <bool> is-macos: false;
     title: "KeyCrash v" + root.app-version;
@@ -341,7 +374,48 @@ export component AppWindow inherits Window {
     in-out property <bool> action-enabled: true;
     in-out property <string> owner-path: "";
     in-out property <string> language: "zh";
-    property <bool> help-visible: false;
+    in-out property <bool> help-visible: false;
+    in-out property <bool> help-professional: false;
+    public function open-instructions() {
+        if (!root.professional-busy && root.mode != "locating") {
+            if (root.mode == "waiting-key") { root.cancel-requested(); }
+            root.help-professional = root.professional;
+            root.sequence-key-capturing = false;
+            root.help-visible = true;
+            help-focus.focus();
+        }
+    }
+    in-out property <bool> professional: false;
+    in-out property <bool> include-admin: false;
+    in-out property <bool> recording-admin: false;
+    property <bool> professional-busy: root.mode == "sequence-testing";
+    in-out property <[SequenceStep]> sequence-steps;
+    in-out property <[string]> sequence-keys;
+    in-out property <int> sequence-key: 0;
+    in-out property <bool> sequence-key-capturing: false;
+    in-out property <bool> sequence-key-capture-unknown: false;
+    property <bool> sequence-editable: !root.professional-busy && !root.sequence-key-capturing;
+    callback sequence-capture-requested();
+    callback sequence-key-captured(int);
+    in-out property <int> sequence-action-kind: 0;
+    in-out property <int> sequence-delay: 100;
+    in-out property <int> sequence-tab: 0;
+    in-out property <bool> sequence-valid: false;
+    in-out property <bool> sequence-scope-ready: false;
+    in-out property <string> sequence-validation;
+    callback sequence-add();
+    callback sequence-edit(int, int);
+    in-out property <[string]> sequence-history;
+    in-out property <string> sequence-history-error;
+    property <length> history-offset: root.sequence-history.length > 0 ? 36px : 0px;
+    callback sequence-clear();
+    callback sequence-history-action(int, bool);
+    callback sequence-action();
+    in-out property <[RecordedEvent]> recorded-events;
+    in-out property <string> recorded-summary;
+    in-out property <string> recording-status;
+    in-out property <[ObservedResponse]> recorded-responses;
+    callback detection-mode-changed(bool);
     in-out property <bool> filter-visible: false;
     in-out property <bool> filter-available: false;
     in-out property <bool> filter-running: false;
@@ -451,7 +525,7 @@ export component AppWindow inherits Window {
 
             Text {
                 x: 0px;
-                y: 50px;
+                y: 90px;
                 width: parent.width;
                 height: 30px;
                 text: root.state-title;
@@ -464,7 +538,7 @@ export component AppWindow inherits Window {
 
             Text {
                 x: 0px;
-                y: 83px;
+                y: 123px;
                 width: parent.width;
                 height: 16px;
                 text: root.state-detail;
@@ -477,7 +551,7 @@ export component AppWindow inherits Window {
 
         Rectangle {
             x: 28px;
-            y: 138px;
+            y: 178px;
             width: parent.width - 56px;
             height: 142px;
             background: #edf1f2;
@@ -487,7 +561,7 @@ export component AppWindow inherits Window {
             drop-shadow-color: #26343c26;
             drop-shadow-offset-y: 7px;
             drop-shadow-blur: 18px;
-            visible: !root.help-visible && root.mode != "filter-result";
+            visible: !root.professional && !root.help-visible && root.mode != "filter-result";
 
             Rectangle { x: 18px; y: 29px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
             Rectangle { x: 18px; y: 57px; width: parent.width - 36px; height: 1px; background: root.mode == "waiting-key" ? #cdd5d8 : #e4e9ea; }
@@ -633,12 +707,12 @@ export component AppWindow inherits Window {
 
         HorizontalLayout {
             x: 28px;
-            y: 314px;
+            y: 354px;
             width: parent.width - 56px;
             height: 44px;
             alignment: space-between;
             spacing: 14px;
-            visible: !root.help-visible;
+            visible: !root.professional && !root.help-visible;
 
             if (root.mode == "owner-found") : OutlineButton {
                 width: 132px;
@@ -693,14 +767,14 @@ export component AppWindow inherits Window {
             }
         }
 
-        if (root.is-macos && root.filter-available && root.mode != "locating" && !root.help-visible) : OutlineButton {
-            x: 28px; y: 370px; width: parent.width - 56px; height: 36px;
+        if (!root.professional && root.is-macos && root.filter-available && root.mode != "locating" && !root.help-visible) : OutlineButton {
+            x: 28px; y: 410px; width: parent.width - 56px; height: 36px;
             text: root.language == "en" ? "Check global listeners" : root.language == "ja" ? "グローバル監視を調べる" : "检查全局监听";
             clicked => { root.show-filters(); filter-focus.focus(); }
         }
 
         if (root.mode == "filter-result" && !root.help-visible) : Rectangle {
-            x: 28px; y: 138px; width: parent.width - 56px; height: 160px;
+            x: 28px; y: 178px; width: parent.width - 56px; height: 160px;
             background: #edf1f2; border-radius: 14px; border-width: 1px; border-color: #b8c2c7;
             Text { x: 12px; y: 10px; width: parent.width - 24px; height: 20px;
                 text: root.shortcut-text; font-size: 13px; font-weight: 650; color: #11171c; }
@@ -715,114 +789,70 @@ export component AppWindow inherits Window {
         }
 
         help-focus := FocusScope {
-            x: 0px;
-            y: 0px;
-            width: parent.width;
-            height: parent.height;
+            width: parent.width; height: parent.height;
             enabled: root.help-visible;
-
             if (root.help-visible) : Rectangle {
-                x: 28px;
-                y: 72px;
-                width: parent.width - 56px;
-                height: 286px;
-                background: #edf1f2;
-                border-width: 1px;
-                border-color: #b8c2c7;
-                border-radius: 14px;
-                drop-shadow-color: #26343c26;
-                drop-shadow-offset-y: 7px;
-                drop-shadow-blur: 18px;
+                x: 28px; y: 72px; width: parent.width - 56px; height: 500px;
+                background: #edf1f2; border-radius: 14px; border-width: 1px; border-color: #b8c2c7;
+                drop-shadow-color: #26343c26; drop-shadow-offset-y: 7px; drop-shadow-blur: 18px;
+                Text {
+                    x: 20px; y: 18px; width: parent.width - 40px; height: 28px;
+                    text: root.language == "en" ? "How to use" : root.language == "ja" ? "使い方" : "使用说明";
+                    color: #11171c; font-size: 22px; font-weight: 700;
+                }
+                HorizontalLayout {
+                    x: 20px; y: 58px; width: parent.width - 40px; height: 30px; spacing: 8px;
+                    OutlineButton {
+                        text: root.language == "en" ? "Normal check" : root.language == "ja" ? "通常の検査" : "普通检测";
+                        background: root.help-professional ? transparent : #f8fafb;
+                        border-color: root.help-professional ? #aab6bc : #007a7e;
+                        accessible-checkable: true; accessible-checked: !root.help-professional;
+                        clicked => { root.help-professional = false; }
+                    }
+                    OutlineButton {
+                        text: root.language == "en" ? "Sequence test" : root.language == "ja" ? "シーケンステスト" : "序列测试";
+                        background: root.help-professional ? #f8fafb : transparent;
+                        border-color: root.help-professional ? #007a7e : #aab6bc;
+                        accessible-checkable: true; accessible-checked: root.help-professional;
+                        clicked => { root.help-professional = true; }
+                    }
+                }
+                ScrollView {
+                    x: 20px; y: 106px; width: parent.width - 40px; height: parent.height - 158px;
+                    viewport-width: self.width;
+                    VerticalLayout {
+                        spacing: 14px; alignment: start;
+                        if (!root.help-professional) : VerticalLayout {
+                            spacing: 12px; alignment: start;
+                            Text { text: root.language == "en" ? "1  Choose modifiers" : root.language == "ja" ? "1  修飾キーを選択" : "1  选择修饰键"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.is-macos ? (root.language == "en" ? "Select ⌃ Control, ⌥ Option, ⇧ Shift, or ⌘ Command." : root.language == "ja" ? "⌃ Control、⌥ Option、⇧ Shift、⌘ Command を選びます。" : "点选 ⌃ Control、⌥ Option、⇧ Shift、⌘ Command。") : root.language == "en" ? "Select Ctrl, Alt, Shift, or Win. Start directly if none is needed." : root.language == "ja" ? "Ctrl、Alt、Shift、Win を選択。不要な場合はそのまま開始します。" : "点选 Ctrl、Alt、Shift、Win；不需要修饰键时可直接开始。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "2  Enter the target key" : root.language == "ja" ? "2  対象キーを入力" : "2  输入目标键"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "Click Start check, then press one target key, including Esc." : root.language == "ja" ? "「検出を開始」をクリックし、Esc など対象キーを1つ押します。" : "点“开始检测”，再按 Esc、A、F1 等一个目标键。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを特定" : "3  定位占用软件"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.is-macos ? (root.language == "en" ? "After checking, choose Locate and grant Accessibility access. This sends the shortcut, so its action may run." : root.language == "ja" ? "検査後に「特定」を選び、アクセシビリティを許可します。元の操作が実行される場合があります。" : "检测后可点“定位占用软件”，按提示允许辅助功能。定位会触发组合，原动作可能执行。") : root.language == "en" ? "If a registration conflict is found, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "登録の競合があれば「特定」を選びます。ショートカットの操作が実行される場合があります。" : "发现注册冲突后点“定位占用软件”。定位会触发快捷键，原动作可能执行。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                        }
+                        if (root.help-professional) : VerticalLayout {
+                            spacing: 12px; alignment: start;
+                            Text { text: root.language == "en" ? "1  Build the sequence" : root.language == "ja" ? "1  シーケンスを編集" : "1  编排按键顺序"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "Choose Tap, Key down, Key up, or Wait, then add a step. Move or delete steps using the row buttons. Every held key needs a Key up step." : root.language == "ja" ? "押して離す・押下・解放・待機を選び、ステップを追加します。行のボタンで並べ替え・削除できます。押下には解放も必要です。" : "选择点按、按下、松开或等待，再添加步骤。用行内按钮调整顺序或删除；按下的键需要配上松开步骤。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "Pick key fills the key field from one key pressed in this window. Then choose Tap, Key down, or Key up and click Add. It does not add a step or send test input. Keys intercepted by the system or another app can be chosen from the list." : root.language == "ja" ? "「キーを入力」で、このウィンドウで押したキーを選択します。動作を選び「追加」をクリックしてください。自動追加やテスト送信は行いません。システムや他のアプリが取得するキーは一覧から選択できます。" : "点“按键选取”，在本窗口按一个键即可填入；再选点按、按下或松开，点“添加”。选取不会自动添加步骤或发送测试输入。系统或其他软件截获的键可从列表选择。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "Ctrl+C+C: Ctrl down → tap C → wait 100 ms → tap C → Ctrl up. The Ctrl key stays held between the two C presses." : root.language == "ja" ? "Ctrl+C+C：Ctrl 押下 → C を押して離す → 100 ms 待機 → C を押して離す → Ctrl 解放。C の間も Ctrl を保持します。" : "Ctrl+C+C 示例：按下 Ctrl → 点按 C → 等待 100 ms → 点按 C → 松开 Ctrl。两次 C 之间保持 Ctrl 按住。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "2  Test in the target app" : root.language == "ja" ? "2  対象アプリでテスト" : "2  切换到目标软件测试"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            Text { text: root.language == "en" ? "First run the app and enable its shortcut. Click Test sequence. Global shortcuts can run while KeyCrash is focused; for an in-app shortcut, switch to that app during the 3-second countdown. Actions run as usual. Cancel stops later steps and releases this test's keys." : root.language == "ja" ? "対象アプリを起動し、ショートカットを有効にしてからテストします。グローバルキーはこの画面でも動作します。アプリ内の操作は3秒の間に対象へ切り替えてください。元の操作も実行され、取消時は後続を止めてキーを解放します。" : "先运行目标软件并启用相应快捷键，再点击“测试序列”。全局快捷键可停留在此窗口；应用内快捷键请在 3 秒内切到目标软件。原操作正常执行；取消会停止后续步骤，并松开本次按住的键。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            if (!root.is-macos) : Text { text: root.language == "en" ? "“Listen as administrator” requests Windows UAC for response observers only. It does not elevate input delivery; sending to a higher-privilege target may fail." : root.language == "ja" ? "「管理者権限で監視」は UAC で応答監視のみを昇格します。入力の送信権限は変わらず、上位権限の対象では失敗する場合があります。" : "“以管理员权限监听”会请求 Windows UAC，只提升响应监听权限；不会提升发送权限，向更高权限的目标窗口发送可能失败。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "3  Read the evidence" : root.language == "ja" ? "3  結果を確認" : "3  查看发送与响应"; color: #11171c; font-size: 13px; font-weight: 650; }
+                            if (!root.is-macos) : Text { text: root.language == "en" ? "Sent lists input accepted by Windows, not proof the target acted. Responses cover registered global hotkeys and GoldenDict sequence notifications. Other in-app commands may have no observable response. A matching binding is diagnostic evidence; no response does not mean the sequence is free." : root.language == "ja" ? "送信欄は Windows が受け付けた入力で、実行完了の証明ではありません。応答は登録されたグローバルキーと GoldenDict の連続キー通知が対象です。他のアプリ内操作は応答を観測できない場合があります。設定との一致は診断情報で、応答なしでも未使用とは判断できません。" : "发送记录表示 Windows 接受了输入，不保证目标已执行。响应目前覆盖已注册的全局组合键和 GoldenDict 连续按键通知，其他应用内操作可能没有可观察响应。活动绑定相符是诊断一致性；没有响应不代表序列可用。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            if (root.is-macos) : Text { text: root.language == "en" ? "Grant Accessibility access before testing. Sent lists submitted events, not proof the target acted. Responses show marked Carbon hotkey receipts; arbitrary in-app commands and full-sequence ownership are not identified." : root.language == "ja" ? "テストにはアクセシビリティの許可が必要です。送信はイベントの投入記録で、実行完了の証明ではありません。応答はこのテストの Carbon 熱鍵通知のみで、任意のアプリ内操作やシーケンス全体の占有は特定しません。" : "测试需要辅助功能权限。发送记录表示已提交事件，不保证目标已执行。响应仅显示带本次测试标记的 Carbon 系统热键通知，不识别任意应用内动作或整段序列的占用者。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "Printable keys use US position labels; actual characters follow your keyboard layout. Lock keys change the keyboard state. Fn/Globe and device-specific keys are not included." : root.language == "ja" ? "文字キーは米国配列の位置表記で、実際の文字は現在の配列に従います。ロックキーは状態を変更します。Fn/Globe や機器固有キーは対象外です。" : "字符键按美式键位标注，实际字符由当前键盘布局决定。锁定键会改变键盘状态；Fn/Globe 和设备专用键不在目录内。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                            Text { text: root.language == "en" ? "Up to 32 steps and 5 seconds; waits allow 20–2000 ms. The two most recent tested plans are saved locally and can be loaded or deleted. Sent events and responses are not saved." : root.language == "ja" ? "最大32ステップ・合計5秒、待機は20～2000 ms。直近2件の履歴はローカルに保存し、読み込み・削除できます。送信記録と応答は保存しません。" : "最多 32 步、总时长 5 秒；等待支持 20–2000 ms。最近测试的两条序列保存在本机，可载入或删除；发送记录与软件响应不保存。"; wrap: word-wrap; color: #45545b; font-size: 12px; }
+                        }
 
-                Text {
-                    x: 20px;
-                    y: 17px;
-                    width: parent.width - 40px;
-                    height: 28px;
-                    text: root.language == "en" ? "How to use" : root.language == "ja" ? "使い方" : "怎么使用";
-                    color: #11171c;
-                    font-size: 25px;
-                    font-weight: 700;
+                    }
                 }
-
-                Text {
-                    x: 20px;
-                    y: 57px;
-                    width: parent.width - 40px;
-                    height: 22px;
-                    text: root.language == "en" ? "1  Choose modifiers" : root.language == "ja" ? "1  修飾キーを選択" : "1  选择修饰键";
-                    color: #11171c;
-                    font-size: 13px;
-                    font-weight: 650;
-                }
-                Text {
-                    x: 38px;
-                    y: 78px;
-                    width: parent.width - 58px;
-                    height: 32px;
-                    text: root.is-macos ? (root.language == "en" ? "Select ⌃ Control, ⌥ Option, ⇧ Shift, or ⌘ Command." : root.language == "ja" ? "⌃ Control、⌥ Option、⇧ Shift、⌘ Command を選びます。" : "点选 ⌃ Control、⌥ Option、⇧ Shift、⌘ Command。") : root.language == "en" ? "Select Ctrl, Alt, Shift, or Win. Start directly if none is needed." : root.language == "ja" ? "Ctrl、Alt、Shift、Win を選択。不要な場合はそのまま開始します。" : "点选 Ctrl、Alt、Shift、Win；不需要修饰键时可直接开始。";
-                    color: #45545b;
-                    font-size: 12px;
-                    wrap: word-wrap;
-                }
-
-                Text {
-                    x: 20px;
-                    y: 116px;
-                    width: parent.width - 40px;
-                    height: 22px;
-                    text: root.language == "en" ? "2  Enter the target key" : root.language == "ja" ? "2  対象キーを入力" : "2  输入目标键";
-                    color: #11171c;
-                    font-size: 13px;
-                    font-weight: 650;
-                }
-                Text {
-                    x: 38px;
-                    y: 137px;
-                    width: parent.width - 58px;
-                    height: 32px;
-                    text: root.language == "en" ? "Click Start check, then press one target key, including Esc." : root.language == "ja" ? "「検出を開始」をクリックし、Esc など対象キーを1つ押します。" : "点“开始检测”，再按 Esc、A、F1 等一个目标键。";
-                    color: #45545b;
-                    font-size: 12px;
-                    wrap: word-wrap;
-                }
-
-                Text {
-                    x: 20px;
-                    y: 175px;
-                    width: parent.width - 40px;
-                    height: 22px;
-                    text: root.language == "en" ? "3  Locate the app" : root.language == "ja" ? "3  使用中のアプリを特定" : "3  定位占用软件";
-                    color: #11171c;
-                    font-size: 13px;
-                    font-weight: 650;
-                }
-                Text {
-                    x: 38px;
-                    y: 196px;
-                    width: parent.width - 58px;
-                    height: 44px;
-                    text: root.is-macos ? (root.language == "en" ? "After checking, choose Locate and grant Accessibility access. This sends the shortcut, so its action may run." : root.language == "ja" ? "検査後に「特定」を選び、アクセシビリティを許可します。元の操作が実行される場合があります。" : "检测后可点“定位占用软件”，按提示允许辅助功能。定位会触发组合，原动作可能执行。") : root.language == "en" ? "If a registration conflict is found, choose Locate. This sends the shortcut, so its action may run." : root.language == "ja" ? "登録の競合があれば「特定」を選びます。ショートカットの操作が実行される場合があります。" : "发现注册冲突后点“定位占用软件”。定位会触发快捷键，原动作可能执行。";
-                    color: #45545b;
-                    font-size: 12px;
-                    wrap: word-wrap;
-                }
-
-                Text {
-                    x: 20px;
-                    y: 252px;
-                    width: parent.width - 156px;
-                    height: 18px;
+                Text { x: 20px; y: parent.height - 35px; width: parent.width - 156px; height: 18px;
                     text: root.language == "en" ? "Click × to return" : root.language == "ja" ? "× をクリックして戻る" : "点击右上角 × 返回";
-                    color: #59676d;
-                    font-size: 11px;
-                }
-
-                OutlineButton {
-                    x: parent.width - 128px;
-                    y: 246px;
-                    width: 108px;
-                    height: 30px;
+                    color: #59676d; font-size: 11px; }
+                OutlineButton { x: parent.width - 128px; y: parent.height - 41px; width: 108px; height: 30px;
                     text: "GitHub ↗";
                     accessible-name: root.language == "en" ? "Open GitHub repository" : root.language == "ja" ? "GitHub リポジトリを開く" : "打开 GitHub 仓库";
                     clicked => { root.open-github(); }
@@ -837,16 +867,12 @@ export component AppWindow inherits Window {
             height: 30px;
             text: root.help-visible ? "×" : "?";
             accessible-name: root.language == "en" ? (root.help-visible ? "Close instructions" : "Open instructions") : root.language == "ja" ? (root.help-visible ? "使い方を閉じる" : "使い方を開く") : (root.help-visible ? "关闭使用说明" : "打开使用说明");
-            enabled: root.mode != "locating";
+            enabled: root.mode != "locating" && !root.professional-busy;
             clicked => {
                 if (root.help-visible) {
                     root.help-visible = false;
                 } else {
-                    if (root.mode == "waiting-key") {
-                        root.cancel-requested();
-                    }
-                    root.help-visible = true;
-                    help-focus.focus();
+                    root.open-instructions();
                 }
             }
         }
@@ -857,10 +883,292 @@ export component AppWindow inherits Window {
             width: 112px;
             height: 30px;
             language: root.language;
-            enabled: root.mode != "locating";
+            enabled: root.mode != "locating" && !root.professional-busy;
             accessible-name: root.language == "en" ? "Language" : root.language == "ja" ? "言語" : "语言";
             selected(value) => {
                 root.language-changed(value);
+            }
+        }
+
+        if (!root.help-visible && !root.filter-visible) : HorizontalLayout {
+            x: 28px; y: 73px; width: 230px; height: 30px; spacing: 6px;
+            OutlineButton {
+                text: root.language == "en" ? "Normal" : root.language == "ja" ? "通常モード" : "普通模式";
+                border-color: root.professional ? #aab6bc : #11171c;
+                background: root.professional ? transparent : #f8fafb;
+                accessible-checkable: true; accessible-checked: !root.professional;
+                enabled: !root.professional-busy && root.mode != "locating";
+                clicked => { root.detection-mode-changed(false); }
+            }
+            OutlineButton {
+                text: root.language == "en" ? "Professional" : root.language == "ja" ? "プロモード" : "专业模式";
+                border-color: root.professional ? #007a7e : #aab6bc;
+                background: root.professional ? #f8fafb : transparent;
+                accessible-checkable: true; accessible-checked: root.professional;
+                enabled: !root.professional-busy && root.mode != "locating";
+                clicked => { root.detection-mode-changed(true); }
+            }
+        }
+
+        if (root.professional && !root.help-visible) : Rectangle {
+            x: 28px; y: 178px; width: parent.width - 56px; height: 420px;
+            background: #edf1f2; border-radius: 14px;
+            border-width: 1px; border-color: #b8c2c7;
+            drop-shadow-color: #26343c26; drop-shadow-offset-y: 7px; drop-shadow-blur: 18px;
+            Text {
+                x: 16px; y: 14px; width: 90px; height: 18px;
+                text: root.language == "en" ? "SEQUENCE" : root.language == "ja" ? "シーケンス" : "编排序列";
+                color: #007a7e; font-size: 10px; font-weight: 700;
+            }
+            HorizontalLayout {
+                x: parent.width - 68px; y: 10px; width: 52px; height: 26px;
+                OutlineButton { label-size: 11px; text: root.language == "en" ? "Clear" : root.language == "ja" ? "消去" : "清空"; enabled: root.sequence-editable && root.sequence-steps.length > 0; clicked => { root.sequence-clear(); } }
+            }
+            if (root.sequence-history-error != "") : Text {
+                x: 108px; y: 14px; width: parent.width - 186px; height: 18px;
+                text: root.sequence-history-error == "load"
+                    ? (root.language == "en" ? "History could not be read" : root.language == "ja" ? "履歴を読み込めません" : "历史记录读取失败")
+                    : (root.language == "en" ? "History could not be saved" : root.language == "ja" ? "履歴を保存できません" : "历史记录保存失败");
+                color: #8b6b16; font-size: 10px; overflow: elide;
+            }
+            if (root.sequence-history.length > 0) : HorizontalLayout {
+                x: 16px; y: 42px; width: parent.width - 32px; height: 28px; spacing: 8px;
+                for entry[index] in root.sequence-history : HorizontalLayout {
+                    horizontal-stretch: 1; spacing: 3px;
+                    OutlineButton {
+                        horizontal-stretch: 1; label-size: 11px; text: entry;
+                        accessible-name: (root.language == "en" ? "Load recent sequence: " : root.language == "ja" ? "履歴を読み込む：" : "载入历史序列：") + entry;
+                        enabled: root.sequence-editable;
+                        clicked => { root.sequence-history-action(index, false); }
+                    }
+                    OutlineButton {
+                        width: 28px; label-size: 16px; text: "×";
+                        accessible-name: (root.language == "en" ? "Delete recent sequence: " : root.language == "ja" ? "履歴を削除：" : "删除历史序列：") + entry;
+                        enabled: root.sequence-editable;
+                        clicked => { root.sequence-history-action(index, true); }
+                    }
+                }
+            }
+            ScrollView {
+                x: 16px; y: 38px + root.history-offset; width: parent.width - 32px; height: 54px;
+                viewport-width: self.width;
+                VerticalLayout {
+                    spacing: 5px; alignment: start;
+                    Text {
+                    text: root.recorded-summary != "" ? root.recorded-summary : (root.language == "en" ? "Add key steps below" : root.language == "ja" ? "下でキーステップを追加" : "在下方添加按键步骤");
+                    wrap: word-wrap; color: #11171c; font-size: 13px; font-weight: 650;
+                    }
+
+                    Text {
+                        text: root.language == "en" ? "Run the app first. For in-app shortcuts, switch to it during the countdown." : root.language == "ja" ? "対象アプリを起動。アプリ内操作はカウント中に対象へ切替。" : "先运行目标软件；应用内快捷键请在倒计时内切到目标。";
+                        wrap: word-wrap; color: #59676d; font-size: 11px;
+                    }
+                }
+            }
+            Rectangle { x: 16px; y: 104px + root.history-offset; width: parent.width - 32px; height: 1px; background: #ccd5d9; }
+            HorizontalLayout {
+                x: 16px; y: 114px + root.history-offset; width: parent.width - 32px; height: 28px; spacing: 8px;
+                OutlineButton {
+                    text: root.language == "en" ? "Sequence" : root.language == "ja" ? "編集" : "编排";
+                    label-size: 12px;
+                    background: root.sequence-tab == 0 ? #f8fafb : transparent;
+                    enabled: !root.sequence-key-capturing;
+                    clicked => { root.sequence-tab = 0; }
+                }
+                OutlineButton {
+                    text: (root.language == "en" ? "Sent" : root.language == "ja" ? "送信" : "发送记录") + " (" + root.recorded-events.length + ")";
+                    label-size: 12px;
+                    background: root.sequence-tab == 1 ? #f8fafb : transparent;
+                    enabled: !root.sequence-key-capturing;
+                    clicked => { root.sequence-tab = 1; }
+                }
+                OutlineButton {
+                    text: (root.language == "en" ? "Responses" : root.language == "ja" ? "応答" : "软件响应") + " (" + root.recorded-responses.length + ")";
+                    label-size: 12px;
+                    background: root.sequence-tab == 2 ? #f8fafb : transparent;
+                    enabled: !root.sequence-key-capturing;
+                    clicked => { root.sequence-tab = 2; }
+                }
+            }
+            if (root.sequence-tab == 0) : ScrollView {
+                x: 16px; y: 154px + root.history-offset; width: parent.width - 32px; height: 160px - root.history-offset;
+                viewport-width: self.width;
+                VerticalLayout {
+                    spacing: 2px; alignment: start;
+                    for step[index] in root.sequence-steps : HorizontalLayout {
+                        height: 32px; spacing: 6px;
+                        Rectangle {
+                            width: 24px; background: transparent;
+                            Rectangle {
+                                y: 6px; width: 20px; height: 20px; border-radius: 10px;
+                                background: step.done ? #d8eceb : #e2e8eb;
+                                if (!step.done) : Text {
+                                    text: "" + (index + 1); color: #536168; font-size: 10px;
+                                    horizontal-alignment: center; vertical-alignment: center;
+                                }
+                                if (step.done) : Path {
+                                    x: 4px; y: 4px; width: 12px; height: 12px;
+                                    commands: "M 1 6 L 4.5 9.5 L 11 2";
+                                    fill: transparent; stroke: #007a7e; stroke-width: 1.8px;
+                                }
+                            }
+                        }
+                        Text {
+                            horizontal-stretch: 1;
+                            text: (step.action == 0 ? (root.language == "en" ? "Tap " : root.language == "ja" ? "押して離す " : "点按 ")
+                                : step.action == 1 ? (root.language == "en" ? "Key down " : root.language == "ja" ? "押下 " : "按下 ")
+                                : step.action == 2 ? (root.language == "en" ? "Key up " : root.language == "ja" ? "解放 " : "松开 ")
+                                : (root.language == "en" ? "Wait " : root.language == "ja" ? "待機 " : "等待 ")) + (step.action == 3 ? "" + step.delay + " ms" : step.key);
+                            color: #11171c; font-size: 12px; vertical-alignment: center; overflow: elide;
+                        }
+                        Rectangle {
+                            width: 88px; height: 28px;
+                            border-width: 1px; border-color: #b8c2c7; border-radius: 6px;
+                            background: #f8fafb;
+                            HorizontalLayout {
+                                x: 2px; width: 84px; spacing: 0px;
+                                MoveStepButton { up: true; accessible-name: root.language == "en" ? "Move up" : root.language == "ja" ? "上へ" : "上移"; enabled: root.sequence-editable && index > 0; clicked => { root.sequence-edit(index, -1); } }
+                                MoveStepButton { up: false; accessible-name: root.language == "en" ? "Move down" : root.language == "ja" ? "下へ" : "下移"; enabled: root.sequence-editable && index + 1 < root.sequence-steps.length; clicked => { root.sequence-edit(index, 1); } }
+                                DeleteStepButton { accessible-name: root.language == "en" ? "Delete step" : root.language == "ja" ? "ステップを削除" : "删除步骤"; enabled: root.sequence-editable; clicked => { root.sequence-edit(index, 0); } }
+                            }
+                            Rectangle { x: 29.5px; y: 6px; width: 1px; height: 16px; background: #d8e0e4; }
+                            Rectangle { x: 57.5px; y: 6px; width: 1px; height: 16px; background: #d8e0e4; }
+                        }
+                    }
+                }
+            }
+            if (root.sequence-tab == 0) : HorizontalLayout {
+                x: 16px; y: 320px; width: parent.width - 32px; height: 24px; spacing: 8px;
+                Text { width: 100px; text: root.language == "en" ? "Action" : root.language == "ja" ? "操作" : "动作"; color: #536168; font-size: 11px; vertical-alignment: center; }
+                Text { width: 140px; text: root.sequence-action-kind == 3 ? (root.language == "en" ? "Wait (ms)" : root.language == "ja" ? "待機（ms）" : "等待（ms）") : (root.language == "en" ? "Key" : root.language == "ja" ? "キー" : "按键"); color: #536168; font-size: 11px; vertical-alignment: center; }
+                if (root.sequence-action-kind != 3) : OutlineButton {
+                    horizontal-stretch: 1; label-size: 11px;
+                    text: root.sequence-key-capturing ? (root.language == "en" ? "Cancel" : root.language == "ja" ? "中止" : "取消选取") : (root.language == "en" ? "Pick key" : root.language == "ja" ? "キーを入力" : "按键选取");
+                    enabled: !root.professional-busy;
+                    clicked => { root.sequence-capture-requested(); }
+                }
+            }
+            if (root.sequence-tab == 0) : HorizontalLayout {
+                x: 16px; y: 350px; width: parent.width - 32px; height: 32px; spacing: 8px;
+                ComboBox { width: 100px; enabled: root.sequence-editable; model: root.language == "en" ? ["Tap", "Key down", "Key up", "Wait"] : root.language == "ja" ? ["押して離す", "押下", "解放", "待機"] : ["点按", "按下", "松开", "等待"]; current-index <=> root.sequence-action-kind; }
+                if (root.sequence-action-kind != 3) : ComboBox { width: 140px; enabled: root.sequence-editable; model: root.sequence-keys; current-index <=> root.sequence-key; }
+                if (root.sequence-action-kind == 3) : SpinBox { width: 140px; minimum: 20; maximum: 2000; step-size: 20; enabled: root.sequence-editable; value <=> root.sequence-delay; }
+                OutlineButton { horizontal-stretch: 1; label-size: 12px; text: root.language == "en" ? "Add" : root.language == "ja" ? "追加" : "添加"; enabled: root.sequence-editable && root.sequence-steps.length < 32; clicked => { root.sequence-add(); } }
+            }
+            if (root.sequence-tab == 0) : Text {
+                x: 16px; y: 388px; width: parent.width - 32px; height: 22px;
+                text: root.sequence-key-capturing
+                    ? (root.sequence-key-capture-unknown
+                        ? (root.language == "en" ? "Key not recognized. Try another or cancel to use the list." : root.language == "ja" ? "未対応のキーです。再入力か、中止して一覧から選択。" : "未识别此键，请重试或取消后从列表选择。")
+                        : (root.language == "en" ? "Press one key. Esc is selectable; click Cancel to stop." : root.language == "ja" ? "キーを1つ入力。Escも選択できます。中止はクリック。" : "请按一个键；Esc 也可选，取消请用鼠标。"))
+                    : root.sequence-validation != "" ? root.sequence-validation : (root.language == "en" ? "32 steps · 5 seconds maximum" : root.language == "ja" ? "最大32ステップ・5秒" : "最多 32 步 · 总时长 5 秒");
+                color: root.sequence-key-capturing ? #007a7e : root.sequence-valid ? #59676d : #8b6b16; font-size: 11px; wrap: word-wrap;
+            }
+            if (root.sequence-tab == 1) : HorizontalLayout {
+                x: 16px; y: 154px + root.history-offset; width: parent.width - 32px; height: 18px; spacing: 8px;
+                Text { width: 74px; text: root.language == "en" ? "Time" : root.language == "ja" ? "時刻" : "相对时间"; color: #536168; font-size: 11px; }
+                Text { horizontal-stretch: 1; text: root.language == "en" ? "Key" : root.language == "ja" ? "キー" : "按键"; color: #536168; font-size: 11px; }
+                Text { width: 98px; text: root.language == "en" ? "Event" : root.language == "ja" ? "イベント" : "动作"; color: #536168; font-size: 11px; }
+            }
+            if (root.sequence-tab == 1) : ScrollView {
+                x: 16px; y: 178px + root.history-offset; width: parent.width - 32px; height: 226px - root.history-offset;
+                viewport-width: self.width;
+                VerticalLayout {
+                    spacing: 0px;
+                    for event in root.recorded-events : HorizontalLayout {
+                        height: 26px; spacing: 8px;
+                        Text { width: 74px; text: event.time; color: #536168; font-size: 11px; vertical-alignment: center; }
+                        Text { horizontal-stretch: 1; text: event.key; color: #11171c; font-size: 12px; font-weight: 650; vertical-alignment: center; overflow: elide; }
+                        Text {
+                            width: 98px;
+                            text: (event.action == "held"
+                                ? (root.language == "en" ? "Already held" : root.language == "ja" ? "押下済み" : "开始时已按住")
+                                : event.action == "repeat"
+                                ? (root.language == "en" ? "Repeat" : root.language == "ja" ? "リピート" : "重复")
+                                : event.action == "down"
+                                ? (root.language == "en" ? "Down" : root.language == "ja" ? "押下" : "按下")
+                                : event.action == "up-missing"
+                                ? (root.language == "en" ? "Up (no down)" : root.language == "ja" ? "解放（押下なし）" : "松开（缺按下）")
+                                : (root.language == "en" ? "Up" : root.language == "ja" ? "解放" : "松开"))
+                                + "";
+                            color: event.action == "up-missing" ? #8b6b16 : event.action == "up" ? #536168 : #007a7e;
+                            font-size: 11px; vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+            if ((root.sequence-tab == 1) && root.recorded-events.length == 0) : Text {
+                x: 16px; y: 180px + root.history-offset; width: parent.width - 32px; height: 44px;
+                text: root.language == "en" ? "No events sent yet" : root.language == "ja" ? "まだ送信されていません" : "尚未发送按键事件";
+                color: #59676d; font-size: 12px; horizontal-alignment: center; wrap: word-wrap;
+            }
+            if (root.sequence-tab == 2) : ScrollView {
+                x: 16px; y: 154px + root.history-offset; width: parent.width - 32px; height: 250px - root.history-offset;
+                viewport-width: self.width;
+                VerticalLayout {
+                    spacing: 12px;
+                    for response in root.recorded-responses : VerticalLayout {
+                        spacing: 3px;
+                        Text { text: response.time + " · " + response.app; color: #11171c; font-size: 12px; font-weight: 650; wrap: word-wrap; }
+                        Text {
+                            text: response.kind == "carbon" ? (root.language == "en" ? "Marked Carbon hotkey receipt" : root.language == "ja" ? "本テストの Carbon 熱鍵通知" : "收到本次测试的 Carbon 系统热键通知") : response.kind == "hotkey"
+                                ? (root.language == "en" ? "Hotkey receiver: " : root.language == "ja" ? "熱鍵の受信: " : "组合热键接收：") + response.value
+                                : (root.language == "en" ? "Hotkey notice · Slot " : root.language == "ja" ? "熱鍵通知 · スロット " : "热键触发通知 · 槽位 ") + response.value;
+                            color: #007a7e; font-size: 11px; wrap: word-wrap;
+                        }
+                        if (response.binding != "") : Text {
+                            text: (root.language == "en" ? "Active binding: " : root.language == "ja" ? "実行中の設定: " : "活动绑定：") + response.binding;
+                            color: #344249; font-size: 12px; wrap: word-wrap;
+                        }
+                        if (response.kind != "hotkey") : Text {
+                            text: response.matched
+                                ? (root.language == "en" ? "Active binding matches the test input."
+                                    : root.language == "ja" ? "実行中の設定とテスト入力が一致します。" : "活动绑定与测试输入相符。")
+                                : (root.language == "en" ? "Link to this key sequence is unconfirmed."
+                                    : root.language == "ja" ? "この入力との対応は未確認です。" : "与本次按键序列的关联尚未确认。" );
+                            color: response.matched ? #007a7e : #59676d; font-size: 11px; wrap: word-wrap;
+                        }
+                        if (response.matched) : Text {
+                            text: (root.language == "en" ? "Input: " : root.language == "ja" ? "入力: " : "对应输入：") + response.input-range;
+                            color: #59676d; font-size: 11px;
+                        }
+                        Text { text: "PID " + response.pid + (root.is-macos ? " · macOS" : " / TID " + response.tid + " · " + response.architecture); color: #59676d; font-size: 10px; }
+                        Text { text: response.path; color: #59676d; font-size: 10px; wrap: word-wrap; }
+                    }
+                }
+            }
+            if ((root.sequence-tab == 2) && root.recorded-responses.length == 0) : Text {
+                x: 16px; y: 180px + root.history-offset; width: parent.width - 32px; height: 84px;
+                text: root.language == "en" ? "No supported response observed. This does not rule out other keyboard listeners."
+                    : root.language == "ja" ? "対応する応答を観測していません。他のキー監視は除外できません。"
+                    : "尚未观察到受支持的响应；不能据此排除其他键盘监听。";
+                color: #59676d; font-size: 12px; horizontal-alignment: center; wrap: word-wrap;
+            }
+        }
+
+        if (root.professional && !root.help-visible) : Text {
+            x: 28px; y: 608px; width: parent.width - 56px; height: 28px;
+            text: (root.recording-status != "" ? root.recording-status : root.mode == "sequence-result"
+                ? (root.is-macos ? (root.language == "en" ? "Events submitted: " : root.language == "ja" ? "投入イベント：" : "已提交事件：") : (root.language == "en" ? "Events sent: " : root.language == "ja" ? "送信イベント：" : "已发送事件：")) + root.recorded-events.length
+                : (root.language == "en" ? "3-second countdown · Actions will run" : root.language == "ja" ? "3秒の後に実行" : "倒计时 3 秒后发送 · 原操作会执行"))
+                + (!root.is-macos && root.sequence-scope-ready ? (root.recording-admin ? (root.language == "en" ? " · Listening as administrator" : root.language == "ja" ? " · 管理者権限で監視" : " · 管理员权限监听") : (root.language == "en" ? " · Standard listening" : root.language == "ja" ? " · 通常権限で監視" : " · 普通权限监听")) : "");
+            color: #59676d; font-size: 11px; wrap: word-wrap;
+        }
+
+        if (root.professional && !root.help-visible) : HorizontalLayout {
+            x: 28px; y: 638px; width: parent.width - 56px; height: 40px; spacing: 12px;
+            if (root.is-macos) : Text {
+                text: root.language == "en" ? "Actions run as usual" : root.language == "ja" ? "元の操作も実行されます" : "原快捷键动作会正常执行";
+                color: #59676d; font-size: 11px; vertical-alignment: center;
+            }
+            if (!root.professional-busy && !root.is-macos) : CheckBox {
+                text: root.language == "en" ? "Listen as administrator" : root.language == "ja" ? "管理者権限で監視" : "以管理员权限监听";
+                checked <=> root.include-admin;
+            }
+            ActionButton {
+                width: 154px; height: 40px; text: root.action-text; action-color: #007a7e;
+                enabled: root.action-enabled && !root.sequence-key-capturing;
+                clicked => { root.sequence-action(); }
             }
         }
 

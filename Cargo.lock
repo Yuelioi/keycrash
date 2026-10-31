@@ -2512,7 +2512,7 @@ dependencies = [
 
 [[package]]
 name = "keycrash"
-version = "0.2.5"
+version = "0.3.0"
 dependencies = [
  "block2 0.6.2",
  "cc",
@@ -2522,6 +2522,7 @@ dependencies = [
  "slint",
  "slint-build",
  "windows",
+ "windows-sys 0.61.2",
  "winresource",
 ]
 
@@ -4356,6 +4357,7 @@ checksum = "ce12038f57f8f3a423564b0c9301a2ab3fda4246e4cbadd6b97acf9124bdc315"
 dependencies = [
  "const-field-offset",
  "i-slint-backend-selector",
+ "i-slint-backend-winit",
  "i-slint-common",
  "i-slint-core",
  "i-slint-core-macros",

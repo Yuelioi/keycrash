@@ -62,7 +62,7 @@ jobs:
           $version = ($metadata.packages | Where-Object name -eq 'keycrash').version
           $bundleRoot = Join-Path $env:GITHUB_WORKSPACE '.task/release/windows-bundle'
           New-Item -ItemType Directory -Path (Join-Path $bundleRoot 'owner-x86') -Force | Out-Null
-          foreach ($file in @('keycrash.exe', 'keycrash-owner-probe.exe', 'keycrash_owner_hook.dll', 'owner-x86/keycrash-owner-probe.exe', 'owner-x86/keycrash_owner_hook.dll')) {
+          foreach ($file in @('keycrash.exe', 'keycrash-owner-probe.exe', 'keycrash_owner_hook.dll', 'keycrash_trace64_v3.dll', 'owner-x86/keycrash-owner-probe.exe', 'owner-x86/keycrash_owner_hook.dll', 'owner-x86/keycrash_trace32_v3.dll')) {
             Copy-Item -LiteralPath (Join-Path $releaseRoot $file) -Destination (Join-Path $bundleRoot $file)
           }
           Copy-Item -LiteralPath 'README.md', 'README.en.md', 'README.ja.md' -Destination $bundleRoot
@@ -86,6 +86,9 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
       - uses: actions/download-artifact@v4
         with:
           pattern: keycrash-*
@@ -107,17 +110,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          cat > release-notes.md <<'EOF'
-          Esc 现在可作为目标键检测，取消等待改为点击“取消”按钮。
-
-          开始、取消、语言切换和帮助等界面操作使用鼠标点击，避免与目标键输入冲突。
-
-          - **Mac M 系列**：下载 `macos-arm64.zip`。
-          - **Intel Mac**：下载 `macos-x86_64.zip`。
-          - **Windows 10 / 11（64 位）**：下载 `windows-x64.zip`，完整解压后运行 `keycrash.exe`。
-
-          Mac 解压后运行 `KeyCrash.app`，首次定位时按提示授予辅助功能权限。定位可能触发快捷键原本的操作；全局监听检查会短暂暂停所选软件的键盘监听，结束或取消后自动恢复。
-          EOF
-          args=(release create "$RELEASE_TAG" dist/*.zip --draft --verify-tag --title "KeyCrash $RELEASE_TAG" --notes-file release-notes.md)
+          args=(release create "$RELEASE_TAG" dist/*.zip --draft --verify-tag --title "KeyCrash $RELEASE_TAG" --notes-file docs/release-notes.md)
           if [[ "$RELEASE_TAG" == *-* ]]; then args+=(--prerelease); fi
           gh "${args[@]}"

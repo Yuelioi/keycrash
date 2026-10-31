@@ -29,6 +29,15 @@ const MAPPING_NAME: *const u16 = windows_sys::w!("Local\\KeyCrashOwnerProbeV1");
 const EVENT_NAME: *const u16 = windows_sys::w!("Local\\KeyCrashOwnerProbeEventV1");
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+#[path = "../../sequence_host.rs"]
+mod sequence_host;
+#[path = "../../sequence_protocol.rs"]
+mod sequence_protocol;
+#[path = "../../trace_host.rs"]
+mod trace_host;
+#[path = "../../trace_protocol.rs"]
+mod trace_protocol;
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct SharedData {
@@ -50,6 +59,38 @@ struct ProbeOptions {
 }
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("--professional-sequence") {
+        let result = std::env::args()
+            .nth(2)
+            .and_then(|s| s.parse::<u32>().ok())
+            .ok_or_else(|| "Missing sequence test parent".to_string())
+            .and_then(sequence_host::run);
+        if let Err(error) = result {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
+    if std::env::args().nth(1).as_deref() == Some("--professional-trace") {
+        let result = std::env::current_exe()
+            .map_err(|e| e.to_string())
+            .and_then(|path| trace_host::run(path.parent().ok_or("Missing helper directory")?));
+        if let Err(error) = result {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
+    if std::env::args().nth(1).as_deref() == Some("--professional-trace-all") {
+        let result = std::env::current_exe()
+            .map_err(|e| e.to_string())
+            .and_then(|path| trace_host::run_all(path.parent().ok_or("Missing helper directory")?));
+        if let Err(error) = result {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let (modifiers, virtual_key, options) = match parse_arguments() {
         Ok(arguments) => arguments,
         Err(error) => exit_with_line(format!("ERROR\t{error}"), None, 1),
